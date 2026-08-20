@@ -129,6 +129,15 @@ public class BoardManager : MonoBehaviour
         {
             dragStartPos = Camera.main.ScreenToWorldPoint(Mouse.current.position.ReadValue());
         }
+        else if (Mouse.current.leftButton.isPressed)
+        {
+            Vector2 currentPos = Camera.main.ScreenToWorldPoint(Mouse.current.position.ReadValue());
+            List<GameObject> applesInDraggedArea = GetApplesInDraggedArea(dragStartPos, currentPos);
+            foreach (GameObject apple in applesInDraggedArea)
+            {
+                apple.GetComponent<Apple>().SetSelected(true);
+            }
+        }
         else if (Mouse.current.leftButton.wasReleasedThisFrame)
         {
             dragEndPos = Camera.main.ScreenToWorldPoint(Mouse.current.position.ReadValue());
@@ -137,8 +146,13 @@ public class BoardManager : MonoBehaviour
             foreach (GameObject apple in applesInDraggedArea)
             {
                 selectedSum += apple.GetComponent<Apple>().GetValue();
+                apple.GetComponent<Apple>().SetSelected(false); 
             }
             Debug.Log($"Dragged Area: Start({dragStartPos}), End({dragEndPos}), Apples Count: {applesInDraggedArea.Count}, Selected Sum: {selectedSum}");
+
+            // dragStartPos와 dragEndPos를 초기화하여 다음 Dragging을 준비
+            dragStartPos = Vector2.zero;
+            dragEndPos = Vector2.zero;
         }
     }
 }
