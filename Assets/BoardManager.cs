@@ -133,7 +133,12 @@ public class BoardManager : MonoBehaviour
         {
             dragEndPos = Camera.main.ScreenToWorldPoint(Mouse.current.position.ReadValue());
             List<GameObject> applesInDraggedArea = GetApplesInDraggedArea(dragStartPos, dragEndPos);
-            Debug.Log($"Dragged Area: Start({dragStartPos}), End({dragEndPos}), Apples Count: {applesInDraggedArea.Count}");
+            int selectedSum = 0;
+            foreach (GameObject apple in applesInDraggedArea)
+            {
+                selectedSum += apple.GetComponent<Apple>().GetValue();
+            }
+            Debug.Log($"Dragged Area: Start({dragStartPos}), End({dragEndPos}), Apples Count: {applesInDraggedArea.Count}, Selected Sum: {selectedSum}");
         }
     }
 }
