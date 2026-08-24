@@ -30,7 +30,7 @@ public class BoardManager : MonoBehaviour
 
     // 디버깅을 위한 Update 함수 
     void Update()
-    {
+    {/*
         if (Mouse.current.leftButton.wasPressedThisFrame)
         {
             dragStartPos = Camera.main.ScreenToWorldPoint(Mouse.current.position.ReadValue());
@@ -56,10 +56,17 @@ public class BoardManager : MonoBehaviour
             }
             Debug.Log($"Dragged Area: Start({dragStartPos}), End({dragEndPos}), Apples Count: {applesInDraggedArea.Count}, Selected Sum: {selectedSum}");
 
+            if (selectedSum == 10)
+            {
+                Debug.Log($"Selected Apples Sum is 10! Removing selected apples and you got {applesInDraggedArea.Count} points");
+                RemoveSelectedApples(applesInDraggedArea);
+            }
+
             // dragStartPos와 dragEndPos를 초기화하여 다음 Dragging을 준비
             dragStartPos = Vector2.zero;
             dragEndPos = Vector2.zero;
         }
+        */
     }
 
     // 보드 생성 및 초기화 
@@ -84,7 +91,7 @@ public class BoardManager : MonoBehaviour
                 apple.transform.localScale = appleScale;
                 apple.transform.localPosition = position;
 
-                apple.SetValue(appleArray[i, j]);
+                apple.SetValue(appleArray[i, j], i, j);
                 appleGrid[i, j] = apple;
             }
         }
@@ -128,6 +135,16 @@ public class BoardManager : MonoBehaviour
         }
 
         return apples;
+    }
+
+    public void RemoveSelectedApples(List<Apple> selectedApples)
+    {
+        foreach (Apple apple in selectedApples)
+        {
+            (int row, int col) = apple.GetPosition();
+            Destroy(apple.gameObject);
+            appleGrid[row, col] = null;
+        }
     }
 
     private void GenerateAppleArray()

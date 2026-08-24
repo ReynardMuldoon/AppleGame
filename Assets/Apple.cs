@@ -13,18 +13,29 @@ public class Apple : MonoBehaviour
 
     private bool isSelected = false; // Whether the apple is selected
 
+    private int rowIndex;
+    private int columnIndex; 
+
     public int GetValue()
     {
         return value;
     }
 
-    public void SetValue(int newValue)
+    public (int row, int col) GetPosition()
+    {
+        return (rowIndex, columnIndex);
+    }
+
+    public void SetValue(int newValue, int row, int col)
     {
         value = newValue;
         valueText.text = value.ToString();
         backGround.color = Color.white;
         isSelected = true;
+        rowIndex = row;
+        columnIndex = col;
     }
+
     public void SetSelected(bool selected)
     {
         isSelected = selected;
