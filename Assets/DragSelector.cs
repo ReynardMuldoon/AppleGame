@@ -66,16 +66,14 @@ public class DragSelector : MonoBehaviour
         DrawSelectionBox(startPos, endPos); 
 
         // 실제로는 이 부분에서 이벤트를 통해 현재 드래그 범위를 GameManager에게 전송
-        selectedApples = boardManager.GetApplesInDraggedArea(startPos, endPos); 
+        /*selectedApples = boardManager.GetApplesInDraggedArea(startPos, endPos); 
         foreach (Apple apple in selectedApples)
         {
             apple.SetSelected(true); 
-        }
+        }*/
         // 여기까지는 디버깅용 
 
-        // 실제 코드 
         OnDragging?.Invoke(startPos, endPos);
-        
     }
 
     // 드래그 종료 시 처리할 로직
@@ -87,7 +85,7 @@ public class DragSelector : MonoBehaviour
         endPos = Camera.main.ScreenToWorldPoint(Mouse.current.position.ReadValue());
 
         // 실제로는 이 부분에서 이벤트를 통해 현재 드래그 범위를 GameManager에게 전송 
-        selectedApples = boardManager.GetApplesInDraggedArea(startPos, endPos);
+        /*selectedApples = boardManager.GetApplesInDraggedArea(startPos, endPos);
         int selectedSum = 0;
         foreach (Apple apple in selectedApples) 
         { 
@@ -102,17 +100,15 @@ public class DragSelector : MonoBehaviour
             Debug.Log($"Selected Apples Sum is 10! Removing selected apples and you got {selectedApples.Count} points");
             boardManager.RemoveSelectedApples(selectedApples);
         }
-
+        
+        selectedApples.Clear();*/
         // 여기까지 디버깅용
+ 
+        OnDragEnd?.Invoke(startPos, endPos);
 
-        // 실제 코드 
-        OnDragEnd?.Invoke(startPos, endPos); 
-
-        // 드래그 종료 시 각 변수들 초기화 및 selectionBoxUI 비활성화
+        // 드래그 종료 시 각 변수들 초기화
         startPos = Vector2.zero; 
         endPos = Vector2.zero;
-
-        selectedApples.Clear();
     }
 
     private void DrawSelectionBox(Vector2 start, Vector2 end)

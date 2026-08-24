@@ -1,6 +1,4 @@
-using System;
 using System.Collections.Generic;
-using Unity.VisualScripting;
 using UnityEngine;
 using UnityEngine.InputSystem;
 
@@ -30,8 +28,8 @@ public class BoardManager : MonoBehaviour
 
     // 디버깅을 위한 Update 함수 
     void Update()
-    {/*
-        if (Mouse.current.leftButton.wasPressedThisFrame)
+    {
+        /*if (Mouse.current.leftButton.wasPressedThisFrame)
         {
             dragStartPos = Camera.main.ScreenToWorldPoint(Mouse.current.position.ReadValue());
         }
@@ -65,8 +63,7 @@ public class BoardManager : MonoBehaviour
             // dragStartPos와 dragEndPos를 초기화하여 다음 Dragging을 준비
             dragStartPos = Vector2.zero;
             dragEndPos = Vector2.zero;
-        }
-        */
+        }*/
     }
 
     // 보드 생성 및 초기화 
