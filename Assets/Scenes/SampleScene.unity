@@ -252,8 +252,6 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::BoardManager
   applePrefab: {fileID: 2168484652839320484, guid: 2971750d79f476d43aff54e9e2e9fd3a, type: 3}
-  dragStartPos: {x: 0, y: 0}
-  dragEndPos: {x: 0, y: 0}
 --- !u!4 &186391082
 Transform:
   m_ObjectHideFlags: 0
@@ -898,7 +896,6 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 8da38f7995628c24990f0e081d765c7e, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::DragSelector
-  boardManager: {fileID: 186391081}
   selectionBoxUI: {fileID: 1110372417}
 --- !u!1 &2011053416
 GameObject:

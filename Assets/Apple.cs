@@ -29,7 +29,6 @@ public class Apple : MonoBehaviour
     {
         value = newValue;
         valueText.text = value.ToString();
-        backGround.color = Color.white;
         isSelected = true;
         rowIndex = row;
         columnIndex = col;
@@ -38,18 +37,6 @@ public class Apple : MonoBehaviour
     public void SetSelected(bool selected)
     {
         isSelected = selected;
-        backGround.color = selected ? Color.yellow : Color.white; // Change color based on selection
-    }
-
-    // Start is called once before the first execution of Update after the MonoBehaviour is created
-    void Start()
-    {
-        
-    }
-
-    // Update is called once per frame
-    void Update()
-    {
-        
+        backGround.color = selected ? new Color(1, 1, 0, 1) : new Color(1, 1, 0, 0); 
     }
 }

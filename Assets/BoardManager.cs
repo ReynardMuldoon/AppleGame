@@ -15,55 +15,11 @@ public class BoardManager : MonoBehaviour
     private Apple[,] appleGrid; 
     private int[,] appleArray;
 
-    // For Debugging 
-    public Vector2 dragStartPos;
-    public Vector2 dragEndPos;
-
     void Start()
     {
         appleArray = new int[row, column];
         appleGrid = new Apple[row, column];
         GenerateBoard();
-    }
-
-    // 디버깅을 위한 Update 함수 
-    void Update()
-    {
-        /*if (Mouse.current.leftButton.wasPressedThisFrame)
-        {
-            dragStartPos = Camera.main.ScreenToWorldPoint(Mouse.current.position.ReadValue());
-        }
-        else if (Mouse.current.leftButton.isPressed)
-        {
-            Vector2 currentPos = Camera.main.ScreenToWorldPoint(Mouse.current.position.ReadValue());
-            List<Apple> applesInDraggedArea = GetApplesInDraggedArea(dragStartPos, currentPos);
-            foreach (Apple apple in applesInDraggedArea)
-            {
-                apple.SetSelected(true);
-            }
-        }
-        else if (Mouse.current.leftButton.wasReleasedThisFrame)
-        {
-            dragEndPos = Camera.main.ScreenToWorldPoint(Mouse.current.position.ReadValue());
-            List<Apple> applesInDraggedArea = GetApplesInDraggedArea(dragStartPos, dragEndPos);
-            int selectedSum = 0;
-            foreach (Apple apple in applesInDraggedArea)
-            {
-                selectedSum += apple.GetValue();
-                apple.SetSelected(false);
-            }
-            Debug.Log($"Dragged Area: Start({dragStartPos}), End({dragEndPos}), Apples Count: {applesInDraggedArea.Count}, Selected Sum: {selectedSum}");
-
-            if (selectedSum == 10)
-            {
-                Debug.Log($"Selected Apples Sum is 10! Removing selected apples and you got {applesInDraggedArea.Count} points");
-                RemoveSelectedApples(applesInDraggedArea);
-            }
-
-            // dragStartPos와 dragEndPos를 초기화하여 다음 Dragging을 준비
-            dragStartPos = Vector2.zero;
-            dragEndPos = Vector2.zero;
-        }*/
     }
 
     // 보드 생성 및 초기화 
