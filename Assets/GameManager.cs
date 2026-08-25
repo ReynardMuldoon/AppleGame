@@ -1,6 +1,7 @@
 using System.Collections.Generic;
 using TMPro;
 using UnityEngine;
+using UnityEngine.UI;
 
 public class GameManager : MonoBehaviour
 {
@@ -10,11 +11,12 @@ public class GameManager : MonoBehaviour
 
     // UI 컴포넌트 연결 
     [SerializeField] private TextMeshPro scoreText;
-    [SerializeField] private TextMeshPro timerText;
+    [SerializeField] private Image timerImage; 
 
     // 게임 상태 관리 변수 
     private int score = 0;
     private float timeLimit = 120f; // 120초 제한 시간
+    private float currentTime = 0;
     private bool isGameOver = false;
 
     private List<Apple> selectedApples = null; 
@@ -45,19 +47,19 @@ public class GameManager : MonoBehaviour
         if (isGameOver) { return; }
         if (score == 170) { GameClear(); }
 
-        timeLimit -= Time.deltaTime;
+        currentTime += Time.deltaTime;
 
         // 남은 시간 0 이하일 경우 게임 종료 처리 
-        if (timeLimit <= 0)
+        if (currentTime >= timeLimit)
         {
-            timeLimit = 0;
+            currentTime = 0;
             GameOver();
         }
 
         // 타이머 UI 갱신 
-        if (timerText != null)
+        if (timerImage != null)
         {
-            timerText.text = $"{Mathf.CeilToInt(timeLimit)}"; 
+            timerImage.fillAmount = (timeLimit - currentTime) / timeLimit; 
         }
     }
 
@@ -139,6 +141,6 @@ public class GameManager : MonoBehaviour
     private void GameClear()
     {
         isGameOver = true;
-        Debug.Log($"게임 클리어! 남은 시간: {Mathf.CeilToInt(timeLimit)}"); 
+        Debug.Log($"게임 클리어! 남은 시간: {Mathf.CeilToInt(timeLimit - currentTime)}"); 
     }
 }
