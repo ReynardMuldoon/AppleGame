@@ -1,3 +1,4 @@
+using System.Collections;
 using System.Collections.Generic;
 using TMPro;
 using UnityEngine;
@@ -11,13 +12,18 @@ public class GameManager : MonoBehaviour
 
     // UI 컴포넌트 연결 
     [SerializeField] private TextMeshPro scoreText;
-    [SerializeField] private Image timerImage; 
+    [SerializeField] private Image timerImage;
+    [SerializeField] private GameObject countdownPanel;
+    [SerializeField] private TextMeshProUGUI countdownText; 
 
     // 게임 상태 관리 변수 
     private int score = 0;
     private float timeLimit = 120f; // 120초 제한 시간
     private float currentTime = 0;
     private bool isGameOver = false;
+
+    // 카운트다운 UI 동안 실행되지 않도록 하기 위한 변수 
+    private bool isGameActive = false; 
 
     private List<Apple> selectedApples = null; 
 
@@ -41,10 +47,15 @@ public class GameManager : MonoBehaviour
         }
     }
 
+    void Start()
+    {
+        StartCoroutine(StartCountdown()); 
+    }
+
     // 타이머 업데이트 및 게임 종료 체크
     void Update()
     {
-        if (isGameOver) { return; }
+        if (!isGameActive || isGameOver) { return; }
         if (score == 170) { GameClear(); }
 
         currentTime += Time.deltaTime;
@@ -63,6 +74,23 @@ public class GameManager : MonoBehaviour
         }
     }
 
+    private IEnumerator StartCountdown()
+    {
+        countdownPanel.SetActive(true); 
+
+        countdownText.text = "3";
+        yield return new WaitForSeconds(1);
+
+        countdownText.text = "2";
+        yield return new WaitForSeconds(1);
+
+        countdownText.text = "1";
+        yield return new WaitForSeconds(1);
+
+        isGameActive = true;
+        dragSelector.enabled = true;
+        countdownPanel.SetActive(false); 
+    }
 
     // DragSelector로부터 드래그 중인 범위를 전달받아 실행될 이벤트 핸들러 함수 
     private void OnDragging(Vector2 start, Vector2 current)
