@@ -6,6 +6,8 @@ using UnityEngine.UI;
 
 public class GameManager : MonoBehaviour
 {
+    public static GameManager Instance { get; private set; }
+
     // 중재자로서 연결할 외부 스크립트들 
     [SerializeField] private BoardManager boardManager;
     [SerializeField] private DragSelector dragSelector;
@@ -22,10 +24,25 @@ public class GameManager : MonoBehaviour
     private float currentTime = 0;
     private bool isGameOver = false;
 
+    private int countdownSec = 3;
+
     // 카운트다운 UI 동안 실행되지 않도록 하기 위한 변수 
     private bool isGameActive = false; 
 
     private List<Apple> selectedApples = null; 
+
+    void Awake()
+    {
+        if (Instance == null)
+        {
+            Instance = this; 
+        }
+
+        else
+        {
+            Destroy(gameObject); 
+        }
+    }
 
     // 이벤트 구독 등록 
     private void OnEnable()
@@ -34,6 +51,7 @@ public class GameManager : MonoBehaviour
         {
             dragSelector.OnDragging += OnDragging;
             dragSelector.OnDragEnd += OnDragEnd;
+            UIManager.Instance.OnCountdownEnd += OnCountdownEnd;
         }
     }
 
@@ -43,13 +61,14 @@ public class GameManager : MonoBehaviour
         if (dragSelector != null)
         {
             dragSelector.OnDragging -= OnDragging;
-            dragSelector.OnDragEnd -= OnDragEnd; 
+            dragSelector.OnDragEnd -= OnDragEnd;
+            UIManager.Instance.OnCountdownEnd -= OnCountdownEnd;
         }
     }
 
     void Start()
     {
-        StartCoroutine(StartCountdown()); 
+        StartCoroutine(UIManager.Instance.StartCountdown(countdownSec)); 
     }
 
     // 타이머 업데이트 및 게임 종료 체크
@@ -74,22 +93,29 @@ public class GameManager : MonoBehaviour
         }
     }
 
-    private IEnumerator StartCountdown()
+    /*private IEnumerator StartCountdown()
     {
         countdownPanel.SetActive(true); 
 
         countdownText.text = "3";
-        yield return new WaitForSeconds(1);
+        yield return new WaitForSeconds(0.5f);
 
         countdownText.text = "2";
-        yield return new WaitForSeconds(1);
+        yield return new WaitForSeconds(0.5f);
 
         countdownText.text = "1";
-        yield return new WaitForSeconds(1);
+        yield return new WaitForSeconds(0.5f);
 
         isGameActive = true;
         dragSelector.enabled = true;
         countdownPanel.SetActive(false); 
+    }*/
+
+    private void OnCountdownEnd()
+    {
+        isGameActive = true;
+        dragSelector.enabled = true;
+        UIManager.Instance.countdownPanel.SetActive(false);
     }
 
     // DragSelector로부터 드래그 중인 범위를 전달받아 실행될 이벤트 핸들러 함수 
@@ -169,6 +195,7 @@ public class GameManager : MonoBehaviour
     private void GameClear()
     {
         isGameOver = true;
+        dragSelector.enabled = false;
         Debug.Log($"게임 클리어! 남은 시간: {Mathf.CeilToInt(timeLimit - currentTime)}"); 
     }
 }
