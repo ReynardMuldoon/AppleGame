@@ -2,6 +2,7 @@ using System;
 using System.Collections;
 using TMPro;
 using UnityEngine;
+using UnityEngine.UI; 
 
 public class UIManager : MonoBehaviour
 {
@@ -12,6 +13,9 @@ public class UIManager : MonoBehaviour
     [SerializeField] public GameObject countdownPanel;
     [SerializeField] private TextMeshProUGUI countdownText;
 
+    // Audio Volume 
+    [SerializeField] private Slider bgmVolumeSlider;
+    [SerializeField] private Slider sfxVolumeSlider;
     void Awake()
     {
         if (Instance == null)
@@ -21,6 +25,19 @@ public class UIManager : MonoBehaviour
         else
         {
             Destroy(gameObject); 
+        }
+    }
+
+    void Start()
+    {
+        if (bgmVolumeSlider != null)
+        {
+            bgmVolumeSlider.onValueChanged.AddListener(AudioManager.Instance.SetBGMVolume); 
+        }
+
+        if (sfxVolumeSlider != null)
+        {
+            sfxVolumeSlider.onValueChanged.AddListener(AudioManager.Instance.SetSFXVolume);
         }
     }
 
