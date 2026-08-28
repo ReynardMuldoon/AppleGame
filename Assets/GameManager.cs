@@ -116,6 +116,7 @@ public class GameManager : MonoBehaviour
         isGameActive = true;
         dragSelector.enabled = true;
         UIManager.Instance.countdownPanel.SetActive(false);
+        AudioManager.Instance.PlayBGM(); 
     }
 
     // DragSelector로부터 드래그 중인 범위를 전달받아 실행될 이벤트 핸들러 함수 
@@ -188,6 +189,8 @@ public class GameManager : MonoBehaviour
     private void GameOver()
     {
         isGameOver = true;
+        dragSelector.enabled = false;
+        AudioManager.Instance.StopBGM(); 
         Debug.Log($"게임 종료! 최종 점수: {score}"); 
     }
 
@@ -196,6 +199,7 @@ public class GameManager : MonoBehaviour
     {
         isGameOver = true;
         dragSelector.enabled = false;
+        AudioManager.Instance.StopBGM();
         Debug.Log($"게임 클리어! 남은 시간: {Mathf.CeilToInt(timeLimit - currentTime)}"); 
     }
 }

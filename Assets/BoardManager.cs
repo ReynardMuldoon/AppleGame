@@ -95,6 +95,7 @@ public class BoardManager : MonoBehaviour
         foreach (Apple apple in selectedApples)
         {
             (int row, int col) = apple.GetPosition();
+            AudioManager.Instance.PlaySFX(SFXType.ApplePop); 
             Destroy(apple.gameObject);
             appleGrid[row, col] = null;
         }
