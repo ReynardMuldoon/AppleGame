@@ -2,6 +2,7 @@ using System.Collections;
 using System.Collections.Generic;
 using TMPro;
 using UnityEngine;
+using UnityEngine.SceneManagement;
 using UnityEngine.UI;
 
 public class GameManager : MonoBehaviour
@@ -73,14 +74,16 @@ public class GameManager : MonoBehaviour
     void Update()
     {
         if (!isGameActive || isGameOver) { return; }
-        if (score == 170) { GameClear(); }
+
+        // 사과 판의 크기에 변경이 생기거나 게임 규칙의 변경에 대응할 수 있도록 변경 필요 
+        if (score == 170) { GameClear(); } 
 
         currentTime += Time.deltaTime;
 
         // 남은 시간 0 이하일 경우 게임 종료 처리 
         if (currentTime >= timeLimit)
         {
-            currentTime = 0;
+            currentTime = timeLimit;
             GameOver();
         }
 
@@ -89,6 +92,18 @@ public class GameManager : MonoBehaviour
         {
             timerImage.fillAmount = (timeLimit - currentTime) / timeLimit; 
         }
+    }
+
+    public void ReturnToTitle()
+    {
+        // 타이틀 씬을 로드 
+        Debug.Log("Return to Title"); 
+    }
+
+    public void RestartGame()
+    {
+        // 현재 씬을 재 로드 
+        Debug.Log("Restart the Game"); 
     }
 
     private void OnCountdownEnd()
@@ -167,7 +182,8 @@ public class GameManager : MonoBehaviour
         dragSelector.enabled = false;
         // 이전에 선택된 사과들의 하이라이트 제거 
         ApplesHighlightOnOff(false);
-        AudioManager.Instance.StopBGM(); 
+        AudioManager.Instance.StopBGM();
+        UIManager.Instance.GameEnd(score, timeLimit - currentTime, false); 
         Debug.Log($"게임 종료! 최종 점수: {score}"); 
     }
 
@@ -179,6 +195,7 @@ public class GameManager : MonoBehaviour
         // 이전에 선택된 사과들의 하이라이트 제거 
         ApplesHighlightOnOff(false); 
         AudioManager.Instance.StopBGM();
-        Debug.Log($"게임 클리어! 남은 시간: {Mathf.CeilToInt(timeLimit - currentTime)}"); 
+        UIManager.Instance.GameEnd(score, timeLimit - currentTime, true); 
+        Debug.Log($"게임 클리어! 남은 시간: {(timeLimit - currentTime)}"); 
     }
 }

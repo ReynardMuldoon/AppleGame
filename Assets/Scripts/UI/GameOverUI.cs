@@ -1,16 +1,33 @@
+using TMPro;
 using UnityEngine;
+using UnityEngine.UI;
 
 public class GameOverUI : MonoBehaviour
 {
-    // Start is called once before the first execution of Update after the MonoBehaviour is created
+    [SerializeField] private GameObject gameOverPanel;
+    [SerializeField] private TextMeshProUGUI gameOverText;
+    [SerializeField] private TextMeshProUGUI scoreText;
+    [SerializeField] private TextMeshProUGUI leftTimeText;
+
+    [SerializeField] private Button returnToTitleButton;
+    [SerializeField] private Button restartButton; 
+
     void Start()
     {
-        
+        returnToTitleButton.onClick.AddListener(GameManager.Instance.ReturnToTitle);
+        restartButton.onClick.AddListener(GameManager.Instance.RestartGame);
     }
 
-    // Update is called once per frame
-    void Update()
+    public void GameOver(int score)
     {
-        
+        gameOverPanel.SetActive(true);
+        scoreText.text = $"Score: {score}"; 
+    }
+
+    public void GameClear(int score, float leftTime)
+    {
+        GameOver(score);
+        gameOverText.text = "Game Clear!!!";
+        leftTimeText.text = $"Left Time: {leftTime}";
     }
 }
