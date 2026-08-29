@@ -51,7 +51,6 @@ public class GameManager : MonoBehaviour
         {
             dragSelector.OnDragging += OnDragging;
             dragSelector.OnDragEnd += OnDragEnd;
-            UIManager.Instance.OnCountdownEnd += OnCountdownEnd;
         }
     }
 
@@ -62,13 +61,12 @@ public class GameManager : MonoBehaviour
         {
             dragSelector.OnDragging -= OnDragging;
             dragSelector.OnDragEnd -= OnDragEnd;
-            UIManager.Instance.OnCountdownEnd -= OnCountdownEnd;
         }
     }
 
     void Start()
     {
-        StartCoroutine(UIManager.Instance.StartCountdown(countdownSec)); 
+        UIManager.Instance.StartCountdown(countdownSec, OnCountdownEnd); 
     }
 
     // 타이머 업데이트 및 게임 종료 체크
@@ -93,29 +91,10 @@ public class GameManager : MonoBehaviour
         }
     }
 
-    /*private IEnumerator StartCountdown()
-    {
-        countdownPanel.SetActive(true); 
-
-        countdownText.text = "3";
-        yield return new WaitForSeconds(0.5f);
-
-        countdownText.text = "2";
-        yield return new WaitForSeconds(0.5f);
-
-        countdownText.text = "1";
-        yield return new WaitForSeconds(0.5f);
-
-        isGameActive = true;
-        dragSelector.enabled = true;
-        countdownPanel.SetActive(false); 
-    }*/
-
     private void OnCountdownEnd()
     {
         isGameActive = true;
         dragSelector.enabled = true;
-        UIManager.Instance.countdownPanel.SetActive(false);
         AudioManager.Instance.PlayBGM(); 
     }
 
@@ -125,24 +104,12 @@ public class GameManager : MonoBehaviour
        if (isGameOver) { return; }
 
         // 이전에 선택된 사과들의 하이라이트 제거 
-        if (selectedApples != null)
-        {
-            foreach (Apple apple in selectedApples)
-            {
-                apple.SetSelected(false);
-            }
-        }
+        ApplesHighlightOnOff(false);
 
         // 현재 선택된 사과들 하이라이트 
         selectedApples = boardManager.GetApplesInDraggedArea(start, current);
 
-        if (selectedApples != null)
-        {
-            foreach (Apple apple in selectedApples)
-            {
-                apple.SetSelected(true);
-            }
-        }
+        ApplesHighlightOnOff(true);
     }
 
     // DragSelector로부터 드래그 완료된 범위를 전달받아 실행될 이벤트 핸들러 함수 
@@ -165,10 +132,7 @@ public class GameManager : MonoBehaviour
 
         else
         {
-            foreach (Apple apple in selectedApples)
-            {
-                apple.SetSelected(false); 
-            }
+            ApplesHighlightOnOff(false);
         }
 
         Debug.Log($"Selected Apples Count: {selectedApples.Count}, Sum of Values: {totalValue}");
@@ -185,11 +149,24 @@ public class GameManager : MonoBehaviour
         }
     }
 
+    private void ApplesHighlightOnOff(bool onOff)
+    {
+        if (selectedApples != null)
+        {
+            foreach (Apple apple in selectedApples) 
+            {
+                apple.SetSelected(onOff);
+            }
+        }
+    } 
+
     // 게임 종료 처리 (입력 차단, 결과 화면 출력 등) 
     private void GameOver()
     {
         isGameOver = true;
         dragSelector.enabled = false;
+        // 이전에 선택된 사과들의 하이라이트 제거 
+        ApplesHighlightOnOff(false);
         AudioManager.Instance.StopBGM(); 
         Debug.Log($"게임 종료! 최종 점수: {score}"); 
     }
@@ -199,6 +176,8 @@ public class GameManager : MonoBehaviour
     {
         isGameOver = true;
         dragSelector.enabled = false;
+        // 이전에 선택된 사과들의 하이라이트 제거 
+        ApplesHighlightOnOff(false); 
         AudioManager.Instance.StopBGM();
         Debug.Log($"게임 클리어! 남은 시간: {Mathf.CeilToInt(timeLimit - currentTime)}"); 
     }

@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using Unity.VisualScripting;
 using UnityEngine;
 using UnityEngine.InputSystem;
 
@@ -13,6 +14,11 @@ public class DragSelector : MonoBehaviour
     private Vector2 startPos = Vector2.zero;
     private Vector2 endPos = Vector2.zero;
     private bool isDragging = false;
+
+    private void OnDisable()
+    {
+        selectionBoxUI.gameObject.SetActive(false); 
+    }
 
     void Update()
     {
