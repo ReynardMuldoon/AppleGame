@@ -103,7 +103,9 @@ public class GameManager : MonoBehaviour
     public void RestartGame()
     {
         // 현재 씬을 재 로드 
-        Debug.Log("Restart the Game"); 
+        Debug.Log("Restart the Game");
+
+        SceneManager.LoadScene(SceneManager.GetActiveScene().name); 
     }
 
     private void OnCountdownEnd()

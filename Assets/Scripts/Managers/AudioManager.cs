@@ -15,13 +15,14 @@ public struct SoundMapping
     public SFXType type;
     public AudioClip clip; 
 }
-
-
-
 public class AudioManager : MonoBehaviour
 {
     // 싱글톤 패턴: 전역에서 단 하나만 존재하고 어디서든 접근 가능 
     public static AudioManager Instance { get; private set; }
+
+    // PlayerPefs에 사용할 고유 키값 
+    private const string BGM_VOLUME_KEY = "BGM_Volume";
+    private const string SFX_VOLUME_KEY = "SFX_Volume";
 
     // 오디오 소스: 용도에 따라 분리 
     [Header("AudioSources")]
@@ -44,26 +45,15 @@ public class AudioManager : MonoBehaviour
         if (Instance == null)
         {
             Instance = this;
-            InitializeDictionary(); 
+            InitializeDictionary();
+            DontDestroyOnLoad(gameObject);  // 게임 재시작에도 볼륨을 유지하기 위해서 
+
+            LoadVolume(); // 저장된 볼륨 불러오기 
         }
          
         else
         {
             Destroy(gameObject);
-        }
-    }
-
-    private void InitializeDictionary()
-    {
-        sfxDictionary = new Dictionary<SFXType, AudioClip>(); 
-
-        foreach (var mapping in sfxMappings)
-        {
-            // 중복된 키가 들어가는 것을 방지 
-            if (!sfxDictionary.ContainsKey(mapping.type) && mapping.clip != null)
-            {
-                sfxDictionary.Add(mapping.type, mapping.clip); 
-            } 
         }
     }
 
@@ -113,11 +103,52 @@ public class AudioManager : MonoBehaviour
 
     public void SetBGMVolume(float volume)
     {
-        bgmSource.volume = volume; 
+        if (bgmSource != null) 
+        { 
+            bgmSource.volume = volume; 
+        }
+
+        PlayerPrefs.SetFloat(BGM_VOLUME_KEY, volume);
+        PlayerPrefs.Save(); 
     }
 
     public void SetSFXVolume(float volume)
     {
-        sfxSource.volume = volume; 
+        if (sfxSource != null)
+        {
+            sfxSource.volume = volume;
+        }
+
+        PlayerPrefs.SetFloat(SFX_VOLUME_KEY, volume);
+        PlayerPrefs.Save();
+    }
+
+    private void InitializeDictionary()
+    {
+        sfxDictionary = new Dictionary<SFXType, AudioClip>();
+
+        foreach (var mapping in sfxMappings)
+        {
+            // 중복된 키가 들어가는 것을 방지 
+            if (!sfxDictionary.ContainsKey(mapping.type) && mapping.clip != null)
+            {
+                sfxDictionary.Add(mapping.type, mapping.clip);
+            }
+        }
+    }
+
+    private void LoadVolume()
+    {
+        float savedBGMVolume = PlayerPrefs.GetFloat(BGM_VOLUME_KEY, 1.0f);
+        float savedSFXVolume = PlayerPrefs.GetFloat(SFX_VOLUME_KEY, 1.0f);
+        if (bgmSource != null)
+        {
+            bgmSource.volume = savedBGMVolume; 
+        }
+
+        if (sfxSource != null)
+        {
+            sfxSource.volume = savedSFXVolume;
+        }
     }
 }
