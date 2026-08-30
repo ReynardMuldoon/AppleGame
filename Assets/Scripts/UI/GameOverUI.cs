@@ -5,7 +5,6 @@ using UnityEngine.UI;
 public class GameOverUI : MonoBehaviour
 {
     [SerializeField] private GameObject gameOverPanel;
-    [SerializeField] private TextMeshProUGUI gameOverText;
     [SerializeField] private TextMeshProUGUI scoreText;
     [SerializeField] private TextMeshProUGUI leftTimeText;
 
@@ -27,7 +26,6 @@ public class GameOverUI : MonoBehaviour
     public void GameClear(int score, float leftTime)
     {
         GameOver(score);
-        gameOverText.text = "Game Clear!!!";
         leftTimeText.text = $"Left Time: {leftTime}";
     }
 }
