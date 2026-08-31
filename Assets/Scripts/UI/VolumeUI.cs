@@ -3,10 +3,6 @@ using UnityEngine.UI;
 
 public class VolumeUI : MonoBehaviour
 {
-    // PlayerPefs에 사용할 고유 키값 
-    private const string BGM_VOLUME_KEY = "BGM_Volume";
-    private const string SFX_VOLUME_KEY = "SFX_Volume";
-
     [SerializeField] private Slider bgmVolumeSlider;
     [SerializeField] private Slider sfxVolumeSlider; 
 
@@ -15,14 +11,36 @@ public class VolumeUI : MonoBehaviour
     {
         if (bgmVolumeSlider != null)
         {
-            bgmVolumeSlider.SetValueWithoutNotify(PlayerPrefs.GetFloat(BGM_VOLUME_KEY, 1.0f));
-            bgmVolumeSlider.onValueChanged.AddListener(AudioManager.Instance.SetBGMVolume);
+            bgmVolumeSlider.SetValueWithoutNotify(PlayerPrefs.GetFloat(GameConstants.BGM_VOLUME_KEY, 1.0f));
+            bgmVolumeSlider.onValueChanged.AddListener(OnBGMVolumeChanged);
         }
 
         if (sfxVolumeSlider != null)
         {
-            sfxVolumeSlider.SetValueWithoutNotify(PlayerPrefs.GetFloat(SFX_VOLUME_KEY, 1.0f));
-            sfxVolumeSlider.onValueChanged.AddListener(AudioManager.Instance.SetSFXVolume);
+            sfxVolumeSlider.SetValueWithoutNotify(PlayerPrefs.GetFloat(GameConstants.SFX_VOLUME_KEY, 1.0f));    
+            sfxVolumeSlider.onValueChanged.AddListener(OnSFXVolumeChanged);
+        }
+    }
+
+    private void OnBGMVolumeChanged(float value)
+    {
+        PlayerPrefs.SetFloat(GameConstants.BGM_VOLUME_KEY, value);
+        PlayerPrefs.Save(); 
+
+        if (AudioManager.Instance != null)
+        {
+            AudioManager.Instance.SetBGMVolume(value); 
+        }
+    }
+
+    private void OnSFXVolumeChanged(float value)
+    {
+        PlayerPrefs.SetFloat(GameConstants.SFX_VOLUME_KEY, value);
+        PlayerPrefs.Save();
+
+        if (AudioManager.Instance != null)
+        {
+            AudioManager.Instance.SetSFXVolume(value);
         }
     }
 }

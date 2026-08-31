@@ -20,10 +20,6 @@ public class AudioManager : MonoBehaviour
     // 싱글톤 패턴: 전역에서 단 하나만 존재하고 어디서든 접근 가능 
     public static AudioManager Instance { get; private set; }
 
-    // PlayerPefs에 사용할 고유 키값 
-    private const string BGM_VOLUME_KEY = "BGM_Volume";
-    private const string SFX_VOLUME_KEY = "SFX_Volume";
-
     // 오디오 소스: 용도에 따라 분리 
     [Header("AudioSources")]
     [SerializeField] private AudioSource bgmSource;
@@ -46,7 +42,6 @@ public class AudioManager : MonoBehaviour
         {
             Instance = this;
             InitializeDictionary();
-            DontDestroyOnLoad(gameObject);  // 게임 재시작에도 볼륨을 유지하기 위해서 
 
             LoadVolume(); // 저장된 볼륨 불러오기 
         }
@@ -107,9 +102,6 @@ public class AudioManager : MonoBehaviour
         { 
             bgmSource.volume = volume; 
         }
-
-        PlayerPrefs.SetFloat(BGM_VOLUME_KEY, volume);
-        PlayerPrefs.Save(); 
     }
 
     public void SetSFXVolume(float volume)
@@ -118,9 +110,6 @@ public class AudioManager : MonoBehaviour
         {
             sfxSource.volume = volume;
         }
-
-        PlayerPrefs.SetFloat(SFX_VOLUME_KEY, volume);
-        PlayerPrefs.Save();
     }
 
     private void InitializeDictionary()
@@ -139,8 +128,8 @@ public class AudioManager : MonoBehaviour
 
     private void LoadVolume()
     {
-        float savedBGMVolume = PlayerPrefs.GetFloat(BGM_VOLUME_KEY, 1.0f);
-        float savedSFXVolume = PlayerPrefs.GetFloat(SFX_VOLUME_KEY, 1.0f);
+        float savedBGMVolume = PlayerPrefs.GetFloat(GameConstants.BGM_VOLUME_KEY, 1.0f);
+        float savedSFXVolume = PlayerPrefs.GetFloat(GameConstants.SFX_VOLUME_KEY, 1.0f);
         if (bgmSource != null)
         {
             bgmSource.volume = savedBGMVolume; 

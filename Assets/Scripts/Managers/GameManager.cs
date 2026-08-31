@@ -97,7 +97,9 @@ public class GameManager : MonoBehaviour
     public void ReturnToTitle()
     {
         // 타이틀 씬을 로드 
-        Debug.Log("Return to Title"); 
+        Debug.Log("Return to Title");
+
+        SceneManager.LoadScene(GameConstants.TITLE_SCENE); 
     }
 
     public void RestartGame()
@@ -105,7 +107,7 @@ public class GameManager : MonoBehaviour
         // 현재 씬을 재 로드 
         Debug.Log("Restart the Game");
 
-        SceneManager.LoadScene(SceneManager.GetActiveScene().name); 
+        SceneManager.LoadScene(GameConstants.GAME_SCENE); 
     }
 
     private void OnCountdownEnd()
