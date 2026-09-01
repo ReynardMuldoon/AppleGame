@@ -188,7 +188,8 @@ public class GameManager : MonoBehaviour
         ApplesHighlightOnOff(false);
         AudioManager.Instance.StopBGM();
         UIManager.Instance.GameEnd(score, timeLimit - currentTime, false); 
-        Debug.Log($"게임 종료! 최종 점수: {score}"); 
+        Debug.Log($"게임 종료! 최종 점수: {score}");
+        UpdateBestScore();
     }
 
     // 모든 사과를 처리 성공한 경우 Game Clear 
@@ -200,6 +201,18 @@ public class GameManager : MonoBehaviour
         ApplesHighlightOnOff(false); 
         AudioManager.Instance.StopBGM();
         UIManager.Instance.GameEnd(score, timeLimit - currentTime, true); 
-        Debug.Log($"게임 클리어! 남은 시간: {(timeLimit - currentTime)}"); 
+        Debug.Log($"게임 클리어! 남은 시간: {(timeLimit - currentTime)}");
+        UpdateBestScore();
+    }
+
+    private void UpdateBestScore()
+    {
+        int currentBestScore = PlayerPrefs.GetInt(GameConstants.BEST_SCORE_KEY, 0);
+        if (score > currentBestScore)
+        {
+            PlayerPrefs.SetInt(GameConstants.BEST_SCORE_KEY, score);
+            PlayerPrefs.Save();
+            Debug.Log($"새로운 최고 점수 기록: {score}");
+        }
     }
 }
