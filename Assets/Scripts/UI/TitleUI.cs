@@ -25,7 +25,7 @@ public class TitleUI : MonoBehaviour
         int bestScore = PlayerPrefs.GetInt(GameConstants.BEST_SCORE_KEY, 0);
         if (bestScoreText != null)
         {
-            bestScoreText.text = $"Best Score: {bestScore}";
+            bestScoreText.text = $"최고 기록: {bestScore}";
         }
     }
 

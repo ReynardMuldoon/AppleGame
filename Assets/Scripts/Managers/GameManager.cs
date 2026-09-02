@@ -96,18 +96,17 @@ public class GameManager : MonoBehaviour
 
     public void ReturnToTitle()
     {
-        // 타이틀 씬을 로드 
-        Debug.Log("Return to Title");
-
         SceneManager.LoadScene(GameConstants.TITLE_SCENE); 
     }
 
     public void RestartGame()
     {
-        // 현재 씬을 재 로드 
-        Debug.Log("Restart the Game");
-
         SceneManager.LoadScene(GameConstants.GAME_SCENE); 
+    }
+
+    public int GetDifficultyLevel()
+    {
+        return boardManager.difficultyLevel;
     }
 
     private void OnCountdownEnd()

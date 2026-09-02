@@ -10,6 +10,8 @@ public class BoardManager : MonoBehaviour
     public const float spacer = 0.8f;
     public const float appleSize = 0.7f;
 
+    public int difficultyLevel = 0; // 난이도: 0~5 
+
     [SerializeField] private Apple applePrefab;
 
     private Apple[,] appleGrid; 
@@ -138,6 +140,13 @@ public class BoardManager : MonoBehaviour
 
             appleArray[randomRow, randomCol] = targetVal;
         }
+
+        if (sum >= 880) difficultyLevel = 5;
+        else if (sum >= 860) difficultyLevel = 4;
+        else if (sum >= 840) difficultyLevel = 3;
+        else if (sum >= 820) difficultyLevel = 2;
+        else if (sum >= 800) difficultyLevel = 1;
+        else difficultyLevel = 0;
     }
 
     // Vector2 좌표를 받아서 AppleGrid의 인덱스로 변환
