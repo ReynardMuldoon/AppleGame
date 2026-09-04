@@ -8,9 +8,12 @@ public class Apple : MonoBehaviour
     [SerializeField]
     private TextMeshPro valueText;
     [SerializeField]
-    private SpriteRenderer backGround; 
+    private SpriteRenderer backGround;
+    [SerializeField]
+    private SpriteRenderer hintEffect;
 
-    private bool isSelected = false; // Whether the apple is selected
+    private bool isSelected = false; // 드래그로 선택되었는지 
+    private bool isHinted = false; // 힌트로 선택되었는지 
 
     private int rowIndex;
     private int columnIndex; 
@@ -38,5 +41,11 @@ public class Apple : MonoBehaviour
     {
         isSelected = selected;
         backGround.color = selected ? new Color(1, 1, 0, 1) : new Color(1, 1, 0, 0); 
+    }
+
+    public void SetHinted(bool hinted)
+    {
+        isHinted = hinted;
+        hintEffect.gameObject.SetActive(hinted);
     }
 }

@@ -4,9 +4,6 @@ using UnityEngine.InputSystem;
 
 public class BoardManager : MonoBehaviour
 {
-    // 외부에서 참조할 필요가 있는지 검토 후 private으로 변경 
-    public const int column = 17;
-    public const int row = 10;
     public const float spacer = 0.8f;
     public const float appleSize = 0.7f;
 
@@ -17,11 +14,21 @@ public class BoardManager : MonoBehaviour
     private Apple[,] appleGrid; 
     private int[,] appleArray;
 
+    private int estimatedMaxScore; // 현재 보드에서 제거 가능한 사과의 최대 개수 (근삿값)
+
     void Start()
     {
-        appleArray = new int[row, column];
-        appleGrid = new Apple[row, column];
+        appleArray = new int[GameConstants.ROW, GameConstants.COLUMN];
+        appleGrid = new Apple[GameConstants.ROW, GameConstants.COLUMN];
         GenerateBoard();
+        estimatedMaxScore = AppleGameSolver.GetEstimatedMaxScore(appleArray); 
+
+        Debug.Log($"Estimated Max Score: {estimatedMaxScore}");
+    }
+
+    public int[,] GetAppleArray()
+    {
+        return appleArray; 
     }
 
     // 보드 생성 및 초기화 
@@ -29,14 +36,14 @@ public class BoardManager : MonoBehaviour
     {
         GenerateAppleArray();
 
-        for (int i = 0; i < row; i++)
+        for (int i = 0; i < GameConstants.ROW; i++)
         {
-            float startX = -(column - 1) / 2.0f * spacer;
-            float startY = (row - 1) / 2.0f * spacer;
+            float startX = -(GameConstants.COLUMN - 1) / 2.0f * spacer;
+            float startY = (GameConstants.ROW - 1) / 2.0f * spacer;
 
             Vector3 appleScale = new Vector3(appleSize, appleSize, 1); 
 
-            for (int j = 0; j < column; j++)
+            for (int j = 0; j < GameConstants.COLUMN; j++)
             {
                 // 미리 계산한 시작점을 기준으로 현재 인덱스만큼 이동시킴 
                 Vector2 position = new Vector2(startX + j * spacer, startY - i * spacer);
@@ -92,6 +99,22 @@ public class BoardManager : MonoBehaviour
         return apples;
     }
 
+    public List<Apple> GetApplesByIndex(int r1, int r2, int c1, int c2)
+    {
+        List<Apple> apples = new List<Apple>();
+        for (int r = r1; r <= r2; r++)
+        {
+            for (int c = c1; c <= c2; c++)
+            {
+                if (appleGrid[r, c] != null)
+                {
+                    apples.Add(appleGrid[r, c]);
+                }
+            }
+        }
+        return apples;
+    }
+
     public void RemoveSelectedApples(List<Apple> selectedApples)
     {
         foreach (Apple apple in selectedApples)
@@ -100,6 +123,7 @@ public class BoardManager : MonoBehaviour
             AudioManager.Instance.PlaySFX(SFXType.ApplePop); 
             Destroy(apple.gameObject);
             appleGrid[row, col] = null;
+            appleArray[row, col] = 0; // 제거된 사과의 값을 0으로 설정
         }
     }
 
@@ -107,9 +131,9 @@ public class BoardManager : MonoBehaviour
     {
         int sum = 0;
 
-        for (int i = 0; i < row; i++)
+        for (int i = 0; i < GameConstants.ROW; i++)
         {
-            for (int j = 0; j < column; j++)
+            for (int j = 0; j < GameConstants.COLUMN; j++)
             {
                 appleArray[i, j] = UnityEngine.Random.Range(1, 10);
                 sum += appleArray[i, j];
@@ -126,8 +150,8 @@ public class BoardManager : MonoBehaviour
             // 단 하나의 예외 방어: 나머지 값과 똑같은 숫자를 가진 사과는 고르지 않는다
             do
             {
-                randomRow = UnityEngine.Random.Range(0, row);
-                randomCol = UnityEngine.Random.Range(0, column);
+                randomRow = UnityEngine.Random.Range(0, GameConstants.ROW);
+                randomCol = UnityEngine.Random.Range(0, GameConstants.COLUMN);
             } while (appleArray[randomRow, randomCol] == remainder);
             // 170개 중 나머지와 같은 숫자가 아닌 사과를 찾는 것은 보통 1번이면 끝
 
@@ -153,12 +177,12 @@ public class BoardManager : MonoBehaviour
     private (int rowIndex, int columnIndex) GetAppleGridIndex(Vector2 pos)
     {
         // GenerateBoard의 위치 공식을 역산하여 그리드 인덱스 계산
-        int r = Mathf.CeilToInt(-pos.y / spacer + (row - 1) / 2.0f);
-        int c = Mathf.CeilToInt(pos.x / spacer + (column - 1) / 2.0f);
+        int r = Mathf.CeilToInt(-pos.y / spacer + (GameConstants.ROW - 1) / 2.0f);
+        int c = Mathf.CeilToInt(pos.x / spacer + (GameConstants.COLUMN - 1) / 2.0f);
 
         // 드래그 영역이 보드 외곽으로 나갔을 때 인덱스가 배열 범위를 벗어나지 않도록 안전하게 제한
-        r = Mathf.Clamp(r, 0, row);
-        c = Mathf.Clamp(c, 0, column);
+        r = Mathf.Clamp(r, 0, GameConstants.ROW);
+        c = Mathf.Clamp(c, 0, GameConstants.COLUMN);
 
         return (r, c);
     }

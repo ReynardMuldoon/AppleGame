@@ -27,10 +27,14 @@ public class GameManager : MonoBehaviour
 
     private int countdownSec = 3;
 
+    private float hintTimer = 0f;
+    private float hintInterval = 5f; 
+
     // 카운트다운 UI 동안 실행되지 않도록 하기 위한 변수 
     private bool isGameActive = false; 
 
-    private List<Apple> selectedApples = null; 
+    private List<Apple> selectedApples = null;
+    private List<Apple> hintedApples = null; 
 
     void Awake()
     {
@@ -75,10 +79,8 @@ public class GameManager : MonoBehaviour
     {
         if (!isGameActive || isGameOver) { return; }
 
-        // 사과 판의 크기에 변경이 생기거나 게임 규칙의 변경에 대응할 수 있도록 변경 필요 
-        if (score == 170) { GameClear(); } 
-
         currentTime += Time.deltaTime;
+        hintTimer += Time.deltaTime;
 
         // 남은 시간 0 이하일 경우 게임 종료 처리 
         if (currentTime >= timeLimit)
@@ -91,6 +93,21 @@ public class GameManager : MonoBehaviour
         if (timerImage != null)
         {
             timerImage.fillAmount = (timeLimit - currentTime) / timeLimit; 
+        }
+
+        if (hintTimer >= hintInterval)
+        {
+            hintTimer = 0f;
+
+            AppleGameSolver.RectData bestRect = AppleGameSolver.GetHint(boardManager.GetAppleArray());
+            if (bestRect.isValid)
+            {
+                hintedApples = boardManager.GetApplesByIndex(bestRect.r1, bestRect.r2, bestRect.c1, bestRect.c2);
+                foreach (Apple apple in hintedApples)
+                {
+                    apple.SetHinted(true);
+                }
+            }
         }
     }
 
@@ -141,11 +158,32 @@ public class GameManager : MonoBehaviour
             totalValue += apple.GetValue();
         }
 
+        Debug.Log($"Selected Apples Count: {selectedApples.Count}, Sum of Values: {totalValue}");
+
         // 선택된 사과들의 총합이 10일 경우 점수 추가
         if (totalValue == 10)
         {
+            hintTimer = 0;
             boardManager.RemoveSelectedApples(selectedApples); 
-            AddScore(selectedApples.Count); 
+            AddScore(selectedApples.Count);
+
+            // 이전 힌트 사과들의 하이라이트 제거
+            if (hintedApples != null)
+            {
+                foreach (Apple apple in hintedApples)
+                {
+                    apple.SetHinted(false);
+                }
+                hintedApples.Clear();
+            }
+
+            // 사과 제거 이후 더 제거 가능한 사과가 있는지 확인 
+            bool hasAvailableMoves = AppleGameSolver.HasAvailableMoves(boardManager.GetAppleArray()); 
+            // 더 제거할 사과가 없다면 즉시 게임 종료 (게임 클리어 처리, 점수 및 남은 시간 출력) 
+            if (!hasAvailableMoves)
+            {
+                GameClear();
+            }
         }
 
         else
@@ -153,7 +191,6 @@ public class GameManager : MonoBehaviour
             ApplesHighlightOnOff(false);
         }
 
-        Debug.Log($"Selected Apples Count: {selectedApples.Count}, Sum of Values: {totalValue}");
         selectedApples.Clear(); 
     }
 
@@ -200,7 +237,7 @@ public class GameManager : MonoBehaviour
         ApplesHighlightOnOff(false); 
         AudioManager.Instance.StopBGM();
         UIManager.Instance.GameEnd(score, timeLimit - currentTime, true); 
-        Debug.Log($"게임 클리어! 남은 시간: {(timeLimit - currentTime)}");
+        Debug.Log($"게임 클리어! 최종 점수: {score}, 남은 시간: {(timeLimit - currentTime)}");
         UpdateBestScore();
     }
 
