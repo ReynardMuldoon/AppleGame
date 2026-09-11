@@ -12,9 +12,9 @@ public class AppleGameSolver
     }
     
     // 최고점 근삿값 예측. 주어진 보드를 복사하여 끝까지 시뮬레이션하고, 제거 가능한 최대 사과 개수를 반환. 
-    public static int GetEstimatedMaxScore(int[,] originalGrid)
+    public static int GetEstimatedMaxScore(int[] originalGrid)
     {
-        int[,] simGrid = (int[,])originalGrid.Clone();
+        int[] simGrid = (int[])originalGrid.Clone();
 
         int totalRemoved = 0; 
 
@@ -31,10 +31,10 @@ public class AppleGameSolver
             {
                 for (int c = bestRect.c1; c <= bestRect.c2; c++)
                 {
-                    if (simGrid[r, c] != 0)
+                    if (simGrid[r * GameConstants.COLUMN + c] != 0)
                     {
                         totalRemoved++;
-                        simGrid[r, c] = 0; 
+                        simGrid[r * GameConstants.COLUMN + c] = 0; 
                     }
                 }
             }
@@ -44,7 +44,7 @@ public class AppleGameSolver
     }
 
     // 데드락 감지. 현재 보드에서 합이 10이 되는 영역이 단 하나라도 있는지 검사. 
-    public static bool HasAvailableMoves(int[,] grid)
+    public static bool HasAvailableMoves(int[] grid)
     {
         int[,] pSum = BuildPrefixSum(grid); 
 
@@ -68,7 +68,7 @@ public class AppleGameSolver
     }
 
     // 가장 큰 수를 포함한 넓이가 작은 영역을 우선적으로 제거하는 전략으로 합이 10이 되는 영역을 찾음.
-    public static RectData GetHint(int[,] grid)
+    public static RectData GetHint(int[] grid)
     {
         int[,] pSum = BuildPrefixSum(grid); 
 
@@ -108,7 +108,7 @@ public class AppleGameSolver
     }
 
 
-    private static int[,] BuildPrefixSum(int[, ] grid)
+    private static int[,] BuildPrefixSum(int[] grid)
     {
         int[,] pSum = new int[GameConstants.ROW + 1, GameConstants.COLUMN + 1]; 
 
@@ -116,7 +116,7 @@ public class AppleGameSolver
         {
             for (int c = 1; c <= GameConstants.COLUMN; c++)
             {
-                pSum[r, c] = grid[r - 1, c - 1] + pSum[r - 1, c] + pSum[r, c - 1] - pSum[r - 1, c - 1];
+                pSum[r, c] = grid[(r - 1) * GameConstants.COLUMN + (c - 1)] + pSum[r - 1, c] + pSum[r, c - 1] - pSum[r - 1, c - 1];
             }
         }
 
@@ -128,16 +128,16 @@ public class AppleGameSolver
         return pSum[r2 + 1, c2 + 1] - pSum[r1, c2 + 1] - pSum[r2 + 1, c1] + pSum[r1, c1]; 
     }
 
-    private static int GetMaxNumInRect(int[, ] grid, int r1, int r2, int c1, int c2)
+    private static int GetMaxNumInRect(int[] grid, int r1, int r2, int c1, int c2)
     {
         int maxNum = 0;
         for (int r = r1; r <= r2; r++)
         {
             for (int c = c1; c <= c2; c++)
             {
-                if (grid[r, c] > maxNum)
+                if (grid[r * GameConstants.COLUMN + c] > maxNum)
                 {
-                    maxNum = grid[r, c];
+                    maxNum = grid[r * GameConstants.COLUMN + c];
                 }
             }
         }

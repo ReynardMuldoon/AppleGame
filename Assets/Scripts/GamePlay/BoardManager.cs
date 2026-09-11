@@ -1,4 +1,5 @@
 using System.Collections.Generic;
+using Unity.VisualScripting;
 using UnityEngine;
 using UnityEngine.InputSystem;
 
@@ -11,37 +12,35 @@ public class BoardManager : MonoBehaviour
 
     [SerializeField] private Apple applePrefab;
 
-    private Apple[,] appleGrid; 
-    private int[,] appleArray;
+    private Apple[] appleGrid; 
+    private int[] appleArray;
 
     private int estimatedMaxScore; // 현재 보드에서 제거 가능한 사과의 최대 개수 (근삿값)
 
     void Start()
     {
-        appleArray = new int[GameConstants.ROW, GameConstants.COLUMN];
-        appleGrid = new Apple[GameConstants.ROW, GameConstants.COLUMN];
-        GenerateBoard();
-        estimatedMaxScore = AppleGameSolver.GetEstimatedMaxScore(appleArray); 
-
-        Debug.Log($"Estimated Max Score: {estimatedMaxScore}");
+        appleArray = new int[GameConstants.ROW * GameConstants.COLUMN];
+        appleGrid = new Apple[GameConstants.ROW * GameConstants.COLUMN];
     }
 
-    public int[,] GetAppleArray()
+    public int[] GetAppleArray()
     {
         return appleArray; 
     }
 
-    // 보드 생성 및 초기화 
-    public void GenerateBoard()
+    public void GenerateBoard(byte[] data)
     {
-        GenerateAppleArray();
+        for (int i = 0; i < GameConstants.ROW * GameConstants.COLUMN; i++)
+        {
+            appleArray[i] = (int)data[i];
+        }
 
         for (int i = 0; i < GameConstants.ROW; i++)
         {
             float startX = -(GameConstants.COLUMN - 1) / 2.0f * spacer;
             float startY = (GameConstants.ROW - 1) / 2.0f * spacer;
 
-            Vector3 appleScale = new Vector3(appleSize, appleSize, 1); 
+            Vector3 appleScale = new Vector3(appleSize, appleSize, 1);
 
             for (int j = 0; j < GameConstants.COLUMN; j++)
             {
@@ -53,10 +52,21 @@ public class BoardManager : MonoBehaviour
                 apple.transform.localScale = appleScale;
                 apple.transform.localPosition = position;
 
-                apple.SetValue(appleArray[i, j], i, j);
-                appleGrid[i, j] = apple;
+                apple.SetValue(appleArray[i * GameConstants.COLUMN + j], i, j);
+                appleGrid[i * GameConstants.COLUMN + j] = apple;
             }
         }
+
+        estimatedMaxScore = AppleGameSolver.GetEstimatedMaxScore(appleArray);
+
+        if (estimatedMaxScore <= 90) difficultyLevel = 5;
+        else if (estimatedMaxScore <= 95) difficultyLevel = 4;
+        else if (estimatedMaxScore <= 100) difficultyLevel = 3;
+        else if (estimatedMaxScore <= 105) difficultyLevel = 2;
+        else if (estimatedMaxScore <= 110) difficultyLevel = 1;
+        else difficultyLevel = 0;
+
+        Debug.Log($"Estimated Max Score: {estimatedMaxScore}, Difficulty Level: {difficultyLevel}");
     }
 
     // 드래그로 생성된 영역 내에 포함된 사과들의 List 반환 
@@ -89,9 +99,9 @@ public class BoardManager : MonoBehaviour
         {
             for (int j = c1; j < c2; j++)
             {
-                if (appleGrid[i, j] != null)
+                if (appleGrid[i * GameConstants.COLUMN + j] != null)
                 {
-                    apples.Add(appleGrid[i, j]);
+                    apples.Add(appleGrid[i * GameConstants.COLUMN + j]);
                 }
             }
         }
@@ -106,9 +116,9 @@ public class BoardManager : MonoBehaviour
         {
             for (int c = c1; c <= c2; c++)
             {
-                if (appleGrid[r, c] != null)
+                if (appleGrid[r * GameConstants.COLUMN + c] != null)
                 {
-                    apples.Add(appleGrid[r, c]);
+                    apples.Add(appleGrid[r * GameConstants.COLUMN + c]);
                 }
             }
         }
@@ -122,55 +132,9 @@ public class BoardManager : MonoBehaviour
             (int row, int col) = apple.GetPosition();
             AudioManager.Instance.PlaySFX(SFXType.ApplePop); 
             Destroy(apple.gameObject);
-            appleGrid[row, col] = null;
-            appleArray[row, col] = 0; // 제거된 사과의 값을 0으로 설정
+            appleGrid[row * GameConstants.COLUMN + col] = null;
+            appleArray[row * GameConstants.COLUMN + col] = 0; // 제거된 사과의 값을 0으로 설정
         }
-    }
-
-    private void GenerateAppleArray()
-    {
-        int sum = 0;
-
-        for (int i = 0; i < GameConstants.ROW; i++)
-        {
-            for (int j = 0; j < GameConstants.COLUMN; j++)
-            {
-                appleArray[i, j] = UnityEngine.Random.Range(1, 10);
-                sum += appleArray[i, j];
-            }
-        }
-
-        int remainder = sum % 10;
-
-        // 이미 10의 배수라면 아무것도 할 필요가 없음
-        if (remainder != 0)
-        {
-            int randomRow, randomCol;
-
-            // 단 하나의 예외 방어: 나머지 값과 똑같은 숫자를 가진 사과는 고르지 않는다
-            do
-            {
-                randomRow = UnityEngine.Random.Range(0, GameConstants.ROW);
-                randomCol = UnityEngine.Random.Range(0, GameConstants.COLUMN);
-            } while (appleArray[randomRow, randomCol] == remainder);
-            // 170개 중 나머지와 같은 숫자가 아닌 사과를 찾는 것은 보통 1번이면 끝
-
-            int targetVal = appleArray[randomRow, randomCol] - remainder;
-
-            if (targetVal <= 0)
-            {
-                targetVal += 10;
-            }
-
-            appleArray[randomRow, randomCol] = targetVal;
-        }
-
-        if (sum >= 880) difficultyLevel = 5;
-        else if (sum >= 860) difficultyLevel = 4;
-        else if (sum >= 840) difficultyLevel = 3;
-        else if (sum >= 820) difficultyLevel = 2;
-        else if (sum >= 800) difficultyLevel = 1;
-        else difficultyLevel = 0;
     }
 
     // Vector2 좌표를 받아서 AppleGrid의 인덱스로 변환

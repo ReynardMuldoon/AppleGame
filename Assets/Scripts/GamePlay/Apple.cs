@@ -23,6 +23,11 @@ public class Apple : MonoBehaviour
         return value;
     }
 
+    public int GetIndex()
+    {
+        return rowIndex * GameConstants.COLUMN + columnIndex;
+    }
+
     public (int row, int col) GetPosition()
     {
         return (rowIndex, columnIndex);

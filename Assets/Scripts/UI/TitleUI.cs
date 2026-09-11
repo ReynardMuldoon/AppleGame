@@ -29,9 +29,17 @@ public class TitleUI : MonoBehaviour
         }
     }
 
-    private void GameStart()
+    private async void GameStart()
     {
-        SceneManager.LoadScene(GameConstants.GAME_SCENE);
+        bool success = await NetworkManager.Instance.ConnectAsync(GameConstants.SERVER_IP, GameConstants.SERVER_PORT);
+        if (NetworkManager.Instance.IsConnected)
+        {
+            SceneManager.LoadScene(GameConstants.GAME_SCENE);
+        }
+        else
+        {
+            // 연결 실패 시 처리 (예: 오류 메시지 표시)
+        }
     }
 
     private void Exit()

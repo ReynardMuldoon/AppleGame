@@ -71,7 +71,24 @@ public class GameManager : MonoBehaviour
 
     void Start()
     {
-        UIManager.Instance.StartCountdown(countdownSec, OnCountdownEnd); 
+        // UIManager.Instance.StartCountdown(countdownSec, OnCountdownEnd); 
+
+        if (NetworkManager.Instance != null)
+        {
+            NetworkManager.Instance.OnGameStartReceived += HandleGameStartData;
+            NetworkManager.Instance.OnDragResultReceived += HandleDragResult;
+
+            NetworkManager.Instance.SendGameStartRequest();
+        }
+    }
+
+    void OnDestroy()
+    {
+        if (NetworkManager.Instance != null)
+        {
+            NetworkManager.Instance.OnGameStartReceived -= HandleGameStartData;
+            NetworkManager.Instance.OnDragResultReceived -= HandleDragResult;
+        }
     }
 
     // 타이머 업데이트 및 게임 종료 체크
@@ -152,52 +169,18 @@ public class GameManager : MonoBehaviour
     {
         if (isGameOver || selectedApples == null || selectedApples.Count <= 0) { return; }
 
-        int totalValue = 0;
-        foreach (Apple apple in selectedApples)
+        List<int> appleIndices = new List<int>(); 
+        foreach(Apple apple in selectedApples)
         {
-            totalValue += apple.GetValue();
+            appleIndices.Add(apple.GetIndex());
         }
-
-        Debug.Log($"Selected Apples Count: {selectedApples.Count}, Sum of Values: {totalValue}");
-
-        // 선택된 사과들의 총합이 10일 경우 점수 추가
-        if (totalValue == 10)
-        {
-            hintTimer = 0;
-            boardManager.RemoveSelectedApples(selectedApples); 
-            AddScore(selectedApples.Count);
-
-            // 이전 힌트 사과들의 하이라이트 제거
-            if (hintedApples != null)
-            {
-                foreach (Apple apple in hintedApples)
-                {
-                    apple.SetHinted(false);
-                }
-                hintedApples.Clear();
-            }
-
-            // 사과 제거 이후 더 제거 가능한 사과가 있는지 확인 
-            bool hasAvailableMoves = AppleGameSolver.HasAvailableMoves(boardManager.GetAppleArray()); 
-            // 더 제거할 사과가 없다면 즉시 게임 종료 (게임 클리어 처리, 점수 및 남은 시간 출력) 
-            if (!hasAvailableMoves)
-            {
-                GameClear();
-            }
-        }
-
-        else
-        {
-            ApplesHighlightOnOff(false);
-        }
-
-        selectedApples.Clear(); 
+        NetworkManager.Instance.SendDragAppleRequest(appleIndices); 
     }
 
     // 점수 추가 및 UI 업데이트
-    private void AddScore(int points)
+    private void SetScore(int points)
     {
-        score += points;
+        score = points;
         if (scoreText != null)
         {
             scoreText.text = score.ToString();
@@ -250,5 +233,52 @@ public class GameManager : MonoBehaviour
             PlayerPrefs.Save();
             Debug.Log($"새로운 최고 점수 기록: {score}");
         }
+    }
+
+    private void HandleGameStartData(byte[] data)
+    {
+        // 서버로부터 게임 시작 데이터를 수신했을 때 처리할 로직
+        boardManager.GenerateBoard(data);
+        Debug.Log("게임 시작 데이터 수신 완료");
+
+        UIManager.Instance.StartCountdown(countdownSec, OnCountdownEnd);
+    }
+
+    private void HandleDragResult(bool isSuccess, int score)
+    {
+        // 서버로부터 드래그 결과 데이터를 수신했을 때 처리할 로직
+        Debug.Log($"드래그 결과 수신: 성공 여부 - {isSuccess}, 점수 - {score}");
+        // 선택된 사과들의 총합이 10일 경우 점수 추가
+        if (isSuccess)
+        {
+            hintTimer = 0;
+            boardManager.RemoveSelectedApples(selectedApples);
+            SetScore(score);
+
+            // 이전 힌트 사과들의 하이라이트 제거
+            if (hintedApples != null)
+            {
+                foreach (Apple apple in hintedApples)
+                {
+                    apple.SetHinted(false);
+                }
+                hintedApples.Clear();
+            }
+
+            // 사과 제거 이후 더 제거 가능한 사과가 있는지 확인 
+            bool hasAvailableMoves = AppleGameSolver.HasAvailableMoves(boardManager.GetAppleArray());
+            // 더 제거할 사과가 없다면 즉시 게임 종료 (게임 클리어 처리, 점수 및 남은 시간 출력) 
+            if (!hasAvailableMoves)
+            {
+                GameClear();
+            }
+        }
+
+        else
+        {
+            ApplesHighlightOnOff(false);
+        }
+
+        selectedApples.Clear();
     }
 }
