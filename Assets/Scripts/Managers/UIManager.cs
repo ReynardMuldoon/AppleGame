@@ -29,16 +29,8 @@ public class UIManager : MonoBehaviour
         StartCoroutine(countdownUI.PlayCountdown(sec, onComplete));
     }
 
-    public void GameEnd(int score, float leftTime, bool isClear)
+    public void GameEnd(int score, float leftTime)
     {
-        if (isClear)
-        {
-            gameOverUI.GameClear(score, leftTime); 
-        }
-
-        else
-        {
-            gameOverUI.GameOver(score); 
-        }
+        gameOverUI.GameOver(score, leftTime); 
     }
 }

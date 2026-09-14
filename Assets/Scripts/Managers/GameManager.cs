@@ -16,8 +16,6 @@ public class GameManager : MonoBehaviour
     // UI 컴포넌트 연결 
     [SerializeField] private TextMeshPro scoreText;
     [SerializeField] private Image timerImage;
-    [SerializeField] private GameObject countdownPanel;
-    [SerializeField] private TextMeshProUGUI countdownText; 
 
     // 게임 상태 관리 변수 
     private int score = 0;
@@ -33,8 +31,8 @@ public class GameManager : MonoBehaviour
     // 카운트다운 UI 동안 실행되지 않도록 하기 위한 변수 
     private bool isGameActive = false; 
 
-    private List<Apple> selectedApples = null;
-    private List<Apple> hintedApples = null; 
+    private List<int> selectedAppleIndices = null;
+    private List<int> hintedAppleIndices = null;
 
     void Awake()
     {
@@ -71,8 +69,6 @@ public class GameManager : MonoBehaviour
 
     void Start()
     {
-        // UIManager.Instance.StartCountdown(countdownSec, OnCountdownEnd); 
-
         if (NetworkManager.Instance != null)
         {
             NetworkManager.Instance.OnGameStartReceived += HandleGameStartData;
@@ -119,11 +115,8 @@ public class GameManager : MonoBehaviour
             AppleGameSolver.RectData bestRect = AppleGameSolver.GetHint(boardManager.GetAppleArray());
             if (bestRect.isValid)
             {
-                hintedApples = boardManager.GetApplesByIndex(bestRect.r1, bestRect.r2, bestRect.c1, bestRect.c2);
-                foreach (Apple apple in hintedApples)
-                {
-                    apple.SetHinted(true);
-                }
+                hintedAppleIndices = boardManager.GetApplesByIndex(bestRect.r1, bestRect.r2, bestRect.c1, bestRect.c2);
+                boardManager.HintApples(hintedAppleIndices, true);
             }
         }
     }
@@ -156,25 +149,19 @@ public class GameManager : MonoBehaviour
        if (isGameOver) { return; }
 
         // 이전에 선택된 사과들의 하이라이트 제거 
-        ApplesHighlightOnOff(false);
+        boardManager.HighlightApples(selectedAppleIndices, false); 
 
         // 현재 선택된 사과들 하이라이트 
-        selectedApples = boardManager.GetApplesInDraggedArea(start, current);
-
-        ApplesHighlightOnOff(true);
+        selectedAppleIndices = boardManager.GetApplesInDraggedArea(start, current); 
+        boardManager.HighlightApples(selectedAppleIndices, true); 
     }
 
     // DragSelector로부터 드래그 완료된 범위를 전달받아 실행될 이벤트 핸들러 함수 
     private void OnDragEnd(Vector2 start, Vector2 end)
     {
-        if (isGameOver || selectedApples == null || selectedApples.Count <= 0) { return; }
+        if (isGameOver || selectedAppleIndices == null || selectedAppleIndices.Count <= 0) { return; }
 
-        List<int> appleIndices = new List<int>(); 
-        foreach(Apple apple in selectedApples)
-        {
-            appleIndices.Add(apple.GetIndex());
-        }
-        NetworkManager.Instance.SendDragAppleRequest(appleIndices); 
+        NetworkManager.Instance.SendDragAppleRequest(selectedAppleIndices); 
     }
 
     // 점수 추가 및 UI 업데이트
@@ -187,40 +174,16 @@ public class GameManager : MonoBehaviour
         }
     }
 
-    private void ApplesHighlightOnOff(bool onOff)
-    {
-        if (selectedApples != null)
-        {
-            foreach (Apple apple in selectedApples) 
-            {
-                apple.SetSelected(onOff);
-            }
-        }
-    } 
-
     // 게임 종료 처리 (입력 차단, 결과 화면 출력 등) 
     private void GameOver()
     {
         isGameOver = true;
         dragSelector.enabled = false;
         // 이전에 선택된 사과들의 하이라이트 제거 
-        ApplesHighlightOnOff(false);
+        boardManager.HighlightApples(selectedAppleIndices, false);
         AudioManager.Instance.StopBGM();
-        UIManager.Instance.GameEnd(score, timeLimit - currentTime, false); 
-        Debug.Log($"게임 종료! 최종 점수: {score}");
-        UpdateBestScore();
-    }
-
-    // 모든 사과를 처리 성공한 경우 Game Clear 
-    private void GameClear()
-    {
-        isGameOver = true;
-        dragSelector.enabled = false;
-        // 이전에 선택된 사과들의 하이라이트 제거 
-        ApplesHighlightOnOff(false); 
-        AudioManager.Instance.StopBGM();
-        UIManager.Instance.GameEnd(score, timeLimit - currentTime, true); 
-        Debug.Log($"게임 클리어! 최종 점수: {score}, 남은 시간: {(timeLimit - currentTime)}");
+        UIManager.Instance.GameEnd(score, timeLimit - currentTime); 
+        Debug.Log($"게임 종료! 최종 점수: {score}, 남은 시간: {(timeLimit - currentTime)}");
         UpdateBestScore();
     }
 
@@ -252,17 +215,14 @@ public class GameManager : MonoBehaviour
         if (isSuccess)
         {
             hintTimer = 0;
-            boardManager.RemoveSelectedApples(selectedApples);
+            boardManager.RemoveSelectedApples(selectedAppleIndices); 
             SetScore(score);
 
             // 이전 힌트 사과들의 하이라이트 제거
-            if (hintedApples != null)
+            if (hintedAppleIndices != null)
             {
-                foreach (Apple apple in hintedApples)
-                {
-                    apple.SetHinted(false);
-                }
-                hintedApples.Clear();
+                boardManager.HintApples(hintedAppleIndices, false);
+                hintedAppleIndices.Clear();
             }
 
             // 사과 제거 이후 더 제거 가능한 사과가 있는지 확인 
@@ -270,15 +230,15 @@ public class GameManager : MonoBehaviour
             // 더 제거할 사과가 없다면 즉시 게임 종료 (게임 클리어 처리, 점수 및 남은 시간 출력) 
             if (!hasAvailableMoves)
             {
-                GameClear();
+                GameOver();
             }
         }
 
         else
         {
-            ApplesHighlightOnOff(false);
+            boardManager.HighlightApples(selectedAppleIndices, false);
         }
 
-        selectedApples.Clear();
+        selectedAppleIndices.Clear();
     }
 }

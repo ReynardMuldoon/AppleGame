@@ -18,17 +18,12 @@ public class GameOverUI : MonoBehaviour
         restartButton.onClick.AddListener(GameManager.Instance.RestartGame);
     }
 
-    public void GameOver(int score)
+    public void GameOver(int score, float leftTime)
     {
         gameOverPanel.SetActive(true);
         scoreText.text = $"점수: {score}";
-        ShowDifficultyLevel(); 
-    }
-
-    public void GameClear(int score, float leftTime)
-    {
-        GameOver(score);
         leftTimeText.text = $"남은 시간: {leftTime}";
+        ShowDifficultyLevel(); 
     }
 
     private void ShowDifficultyLevel()

@@ -30,11 +30,13 @@ public class BoardManager : MonoBehaviour
 
     public void GenerateBoard(byte[] data)
     {
+        // appleArray 배열에 서버에서 받은 데이터를 기반으로 사과 값 설정
         for (int i = 0; i < GameConstants.ROW * GameConstants.COLUMN; i++)
         {
             appleArray[i] = (int)data[i];
         }
 
+        // 사과 오브젝트 생성 및 위치 설정
         for (int i = 0; i < GameConstants.ROW; i++)
         {
             float startX = -(GameConstants.COLUMN - 1) / 2.0f * spacer;
@@ -57,6 +59,7 @@ public class BoardManager : MonoBehaviour
             }
         }
 
+        // 추정 최대 점수 계산 및 난이도 설정
         estimatedMaxScore = AppleGameSolver.GetEstimatedMaxScore(appleArray);
 
         if (estimatedMaxScore <= 90) difficultyLevel = 5;
@@ -69,8 +72,8 @@ public class BoardManager : MonoBehaviour
         Debug.Log($"Estimated Max Score: {estimatedMaxScore}, Difficulty Level: {difficultyLevel}");
     }
 
-    // 드래그로 생성된 영역 내에 포함된 사과들의 List 반환 
-    public List<Apple> GetApplesInDraggedArea(Vector2 dragStartPos, Vector2 dragEndPos)
+    // 드래그로 생성된 영역 내에 포함된 사과들의 인덱스 List 반환 
+    public List<int> GetApplesInDraggedArea(Vector2 dragStartPos, Vector2 dragEndPos)
     {
         // Mathf.Min / Max를 활용하여 조건문 없이 직관적으로 Min/Max 좌표 추출
         float minX = Mathf.Min(dragStartPos.x, dragEndPos.x);
@@ -91,7 +94,7 @@ public class BoardManager : MonoBehaviour
         (int r1, int c1) = GetAppleGridIndex(leftTop);
         (int r2, int c2) = GetAppleGridIndex(rightBot);
 
-        List<Apple> apples = new List<Apple>();
+        List<int> appleIndices = new List<int>();
 
         // r1, c1이 row 또는 column일 경우 r2, c2 또한 row 또는 column이 되므로 이 경우 
         // 조건문에 의해 AppleGrid의 잘못된 범위에 접근하지 않을 수 있다. 
@@ -101,39 +104,62 @@ public class BoardManager : MonoBehaviour
             {
                 if (appleGrid[i * GameConstants.COLUMN + j] != null)
                 {
-                    apples.Add(appleGrid[i * GameConstants.COLUMN + j]);
-                }
+                    appleIndices.Add(i * GameConstants.COLUMN + j);
+                }   
             }
         }
 
-        return apples;
+        return appleIndices;
     }
 
-    public List<Apple> GetApplesByIndex(int r1, int r2, int c1, int c2)
+    public List<int> GetApplesByIndex(int r1, int r2, int c1, int c2)
     {
-        List<Apple> apples = new List<Apple>();
+        List<int> appleIndices = new List<int>();
         for (int r = r1; r <= r2; r++)
         {
             for (int c = c1; c <= c2; c++)
             {
                 if (appleGrid[r * GameConstants.COLUMN + c] != null)
                 {
-                    apples.Add(appleGrid[r * GameConstants.COLUMN + c]);
+                    appleIndices.Add(r * GameConstants.COLUMN + c);
                 }
             }
         }
-        return apples;
+        return appleIndices;
     }
 
-    public void RemoveSelectedApples(List<Apple> selectedApples)
+    public void RemoveSelectedApples(List<int> selectedAppleIndices)
     {
-        foreach (Apple apple in selectedApples)
+        foreach (int index in selectedAppleIndices)
         {
-            (int row, int col) = apple.GetPosition();
-            AudioManager.Instance.PlaySFX(SFXType.ApplePop); 
-            Destroy(apple.gameObject);
-            appleGrid[row * GameConstants.COLUMN + col] = null;
-            appleArray[row * GameConstants.COLUMN + col] = 0; // 제거된 사과의 값을 0으로 설정
+            AudioManager.Instance.PlaySFX(SFXType.ApplePop);
+            Destroy(appleGrid[index].gameObject);
+            appleGrid[index] = null;
+            appleArray[index] = 0; // 제거된 사과의 값을 0으로 설정
+        }
+    }
+
+    public void HighlightApples(List<int> appleIndices, bool highlight)
+    {
+        if (appleIndices == null || appleIndices.Count == 0) { return; }
+        foreach (int index in appleIndices)
+        {
+            if (appleGrid[index] != null)
+            {
+                appleGrid[index].SetSelected(highlight);
+            }
+        }
+    }
+
+    public void HintApples(List<int> appleIndices, bool highlight)
+    {
+        if (appleIndices == null || appleIndices.Count == 0) { return; }
+        foreach (int index in appleIndices)
+        {
+            if (appleGrid[index] != null)
+            {
+                appleGrid[index].SetHinted(highlight);
+            }
         }
     }
 
