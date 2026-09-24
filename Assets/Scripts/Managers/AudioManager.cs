@@ -52,6 +52,14 @@ public class AudioManager : MonoBehaviour
         }
     }
 
+    void OnDestroy()
+    {
+        if (Instance == this)
+        {
+            Instance = null;
+        }
+    }
+
     // BGM 재생 
     public void PlayBGM()
     {
@@ -66,6 +74,7 @@ public class AudioManager : MonoBehaviour
     // BGM 정지 
     public void StopBGM()
     {
+        if (bgmSource == null) return; 
         bgmSource.Stop(); 
     }
 

@@ -1,6 +1,5 @@
 using System;
 using System.Collections.Generic;
-using Unity.VisualScripting;
 using UnityEngine;
 using UnityEngine.InputSystem;
 
@@ -17,15 +16,17 @@ public class DragSelector : MonoBehaviour
 
     private void OnDisable()
     {
-        selectionBoxUI.gameObject.SetActive(false); 
+        isDragging = false;
+        if (selectionBoxUI != null) selectionBoxUI.gameObject.SetActive(false);
     }
 
     void Update()
     {
+        if (Mouse.current == null || Camera.main == null || selectionBoxUI == null) return;
         // 이번 프레임에서 마우스가 클릭된 경우 (드래그 시작한 경우)
         if (Mouse.current.leftButton.wasPressedThisFrame)
         {
-            HandleDragStart();
+            if (!MultiplayerHud.BlocksPointer(Mouse.current.position.ReadValue())) HandleDragStart();
         }
 
         // 이전 프레임에서의 마우스의 클릭이 유지된 경우 (드래그 중인 경우) 

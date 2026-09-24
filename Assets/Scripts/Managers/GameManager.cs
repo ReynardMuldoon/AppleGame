@@ -1,5 +1,6 @@
-using System.Collections;
+using System;
 using System.Collections.Generic;
+using AppleNet;
 using TMPro;
 using UnityEngine;
 using UnityEngine.SceneManagement;
@@ -7,238 +8,142 @@ using UnityEngine.UI;
 
 public class GameManager : MonoBehaviour
 {
-    public static GameManager Instance { get; private set; }
-
-    // 중재자로서 연결할 외부 스크립트들 
+    public static GameManager Instance {get;private set;}
     [SerializeField] private BoardManager boardManager;
     [SerializeField] private DragSelector dragSelector;
-
-    // UI 컴포넌트 연결 
     [SerializeField] private TextMeshPro scoreText;
     [SerializeField] private Image timerImage;
-
-    // 게임 상태 관리 변수 
-    private int score = 0;
-    private float timeLimit = 120f; // 120초 제한 시간
-    private float currentTime = 0;
-    private bool isGameOver = false;
-
-    private int countdownSec = 3;
-
-    private float hintTimer = 0f;
-    private float hintInterval = 5f; 
-
-    // 카운트다운 UI 동안 실행되지 않도록 하기 위한 변수 
-    private bool isGameActive = false; 
-
-    private List<int> selectedAppleIndices = null;
-    private List<int> hintedAppleIndices = null;
-
-    void Awake()
+    private int score;private const float TimeLimit=120f;
+    private float currentTime,hintTimer;
+    private bool active,ended,musicStarted,multi,initialized;
+    private List<int> selected,hinted;
+    private NetworkManager network;
+    private void Awake()
     {
-        if (Instance == null)
-        {
-            Instance = this; 
-        }
-
-        else
-        {
-            Destroy(gameObject); 
-        }
+        if(Instance!=null&&Instance!=this){Destroy(gameObject);return;}Instance=this;
+        if(dragSelector!=null)dragSelector.enabled=false;
     }
-
-    // 이벤트 구독 등록 
     private void OnEnable()
     {
-        if (dragSelector != null)
-        {
-            dragSelector.OnDragging += OnDragging;
-            dragSelector.OnDragEnd += OnDragEnd;
-        }
+        if(dragSelector!=null){dragSelector.OnDragging+=OnDragging;dragSelector.OnDragEnd+=OnDragEnd;}
     }
-
-    // 이벤트 구독 해제 
     private void OnDisable()
     {
-        if (dragSelector != null)
+        if(dragSelector!=null){dragSelector.OnDragging-=OnDragging;dragSelector.OnDragEnd-=OnDragEnd;}
+    }
+    private void Start()
+    {
+        network=NetworkManager.Ensure();multi=network.Multiplayer;
+        if(boardManager==null||dragSelector==null){Debug.LogError("BoardManager/DragSelector references are missing.");return;}
+        if(multi)
         {
-            dragSelector.OnDragging -= OnDragging;
-            dragSelector.OnDragEnd -= OnDragEnd;
+            if(network.Prepared==null){network.Disconnect();SceneManager.LoadScene(GameConstants.TITLE_SCENE);return;}
+            network.SelectionReceived+=ApplyServerSelection;
+            boardManager.GenerateBoard(network.Prepared.Board);initialized=true;network.Loaded();
         }
-    }
-
-    void Start()
-    {
-        if (NetworkManager.Instance != null)
-        {
-            NetworkManager.Instance.OnGameStartReceived += HandleGameStartData;
-            NetworkManager.Instance.OnDragResultReceived += HandleDragResult;
-
-            NetworkManager.Instance.SendGameStartRequest();
-        }
-    }
-
-    void OnDestroy()
-    {
-        if (NetworkManager.Instance != null)
-        {
-            NetworkManager.Instance.OnGameStartReceived -= HandleGameStartData;
-            NetworkManager.Instance.OnDragResultReceived -= HandleDragResult;
-        }
-    }
-
-    // 타이머 업데이트 및 게임 종료 체크
-    void Update()
-    {
-        if (!isGameActive || isGameOver) { return; }
-
-        currentTime += Time.deltaTime;
-        hintTimer += Time.deltaTime;
-
-        // 남은 시간 0 이하일 경우 게임 종료 처리 
-        if (currentTime >= timeLimit)
-        {
-            currentTime = timeLimit;
-            GameOver();
-        }
-
-        // 타이머 UI 갱신 
-        if (timerImage != null)
-        {
-            timerImage.fillAmount = (timeLimit - currentTime) / timeLimit; 
-        }
-
-        if (hintTimer >= hintInterval)
-        {
-            hintTimer = 0f;
-
-            AppleGameSolver.RectData bestRect = AppleGameSolver.GetHint(boardManager.GetAppleArray());
-            if (bestRect.isValid)
-            {
-                hintedAppleIndices = boardManager.GetApplesByIndex(bestRect.r1, bestRect.r2, bestRect.c1, bestRect.c2);
-                boardManager.HintApples(hintedAppleIndices, true);
-            }
-        }
-    }
-
-    public void ReturnToTitle()
-    {
-        SceneManager.LoadScene(GameConstants.TITLE_SCENE); 
-    }
-
-    public void RestartGame()
-    {
-        SceneManager.LoadScene(GameConstants.GAME_SCENE); 
-    }
-
-    public int GetDifficultyLevel()
-    {
-        return boardManager.difficultyLevel;
-    }
-
-    private void OnCountdownEnd()
-    {
-        isGameActive = true;
-        dragSelector.enabled = true;
-        AudioManager.Instance.PlayBGM(); 
-    }
-
-    // DragSelector로부터 드래그 중인 범위를 전달받아 실행될 이벤트 핸들러 함수 
-    private void OnDragging(Vector2 start, Vector2 current)
-    {
-       if (isGameOver) { return; }
-
-        // 이전에 선택된 사과들의 하이라이트 제거 
-        boardManager.HighlightApples(selectedAppleIndices, false); 
-
-        // 현재 선택된 사과들 하이라이트 
-        selectedAppleIndices = boardManager.GetApplesInDraggedArea(start, current); 
-        boardManager.HighlightApples(selectedAppleIndices, true); 
-    }
-
-    // DragSelector로부터 드래그 완료된 범위를 전달받아 실행될 이벤트 핸들러 함수 
-    private void OnDragEnd(Vector2 start, Vector2 end)
-    {
-        if (isGameOver || selectedAppleIndices == null || selectedAppleIndices.Count <= 0) { return; }
-
-        NetworkManager.Instance.SendDragAppleRequest(selectedAppleIndices); 
-    }
-
-    // 점수 추가 및 UI 업데이트
-    private void SetScore(int points)
-    {
-        score = points;
-        if (scoreText != null)
-        {
-            scoreText.text = score.ToString();
-        }
-    }
-
-    // 게임 종료 처리 (입력 차단, 결과 화면 출력 등) 
-    private void GameOver()
-    {
-        isGameOver = true;
-        dragSelector.enabled = false;
-        // 이전에 선택된 사과들의 하이라이트 제거 
-        boardManager.HighlightApples(selectedAppleIndices, false);
-        AudioManager.Instance.StopBGM();
-        UIManager.Instance.GameEnd(score, timeLimit - currentTime); 
-        Debug.Log($"게임 종료! 최종 점수: {score}, 남은 시간: {(timeLimit - currentTime)}");
-        UpdateBestScore();
-    }
-
-    private void UpdateBestScore()
-    {
-        int currentBestScore = PlayerPrefs.GetInt(GameConstants.BEST_SCORE_KEY, 0);
-        if (score > currentBestScore)
-        {
-            PlayerPrefs.SetInt(GameConstants.BEST_SCORE_KEY, score);
-            PlayerPrefs.Save();
-            Debug.Log($"새로운 최고 점수 기록: {score}");
-        }
-    }
-
-    private void HandleGameStartData(byte[] data)
-    {
-        // 서버로부터 게임 시작 데이터를 수신했을 때 처리할 로직
-        boardManager.GenerateBoard(data);
-        Debug.Log("게임 시작 데이터 수신 완료");
-
-        UIManager.Instance.StartCountdown(countdownSec, OnCountdownEnd);
-    }
-
-    private void HandleDragResult(bool isSuccess, int score)
-    {
-        // 서버로부터 드래그 결과 데이터를 수신했을 때 처리할 로직
-        Debug.Log($"드래그 결과 수신: 성공 여부 - {isSuccess}, 점수 - {score}");
-        // 선택된 사과들의 총합이 10일 경우 점수 추가
-        if (isSuccess)
-        {
-            hintTimer = 0;
-            boardManager.RemoveSelectedApples(selectedAppleIndices); 
-            SetScore(score);
-
-            // 이전 힌트 사과들의 하이라이트 제거
-            if (hintedAppleIndices != null)
-            {
-                boardManager.HintApples(hintedAppleIndices, false);
-                hintedAppleIndices.Clear();
-            }
-
-            // 사과 제거 이후 더 제거 가능한 사과가 있는지 확인 
-            bool hasAvailableMoves = AppleGameSolver.HasAvailableMoves(boardManager.GetAppleArray());
-            // 더 제거할 사과가 없다면 즉시 게임 종료 (게임 클리어 처리, 점수 및 남은 시간 출력) 
-            if (!hasAvailableMoves)
-            {
-                GameOver();
-            }
-        }
-
         else
         {
-            boardManager.HighlightApples(selectedAppleIndices, false);
+            boardManager.GenerateBoard(LocalBoardRules.Generate(new System.Random()));initialized=true;
+            if(UIManager.Instance!=null)UIManager.Instance.StartCountdown(3,StartSinglePlay);
+            else StartSinglePlay();
         }
-
-        selectedAppleIndices.Clear();
+        SetScore(0);
+    }
+    private void StartSinglePlay()
+    {
+        if(ended)return;active=true;StartMusic();
+        if(!AppleGameSolver.HasAvailableMoves(boardManager.GetAppleArray()))FinishSingle();
+    }
+    private void StartMusic(){if(!musicStarted){musicStarted=true;AudioManager.Instance?.PlayBGM();}}
+    private void Update()
+    {
+        if(!initialized)return;
+        if(multi)
+        {
+            FitMultiplayerCamera();
+            var room=network.CurrentRoom;var me=room?.Find(network.OwnId);
+            active=room!=null&&room.Phase==RoomPhase.Playing&&me!=null&&!me.Finished;
+            if(active)StartMusic();
+            if(room!=null&&room.Phase==RoomPhase.Results){ended=true;AudioManager.Instance?.StopBGM();}
+            if(me!=null)SetScore((int)me.Score);
+            if(timerImage!=null)timerImage.fillAmount=room!=null&&room.Phase==RoomPhase.Results?0:Mathf.Clamp01(network.RemainingSeconds/TimeLimit);
+            dragSelector.enabled=active&&!network.SelectionPending&&!ended;
+            return; // Multiplayer has no client hint timer and no client end authority.
+        }
+        dragSelector.enabled=active&&!ended;
+        if(!active||ended)return;
+        currentTime=Mathf.Min(TimeLimit,currentTime+Time.deltaTime);hintTimer+=Time.deltaTime;
+        if(timerImage!=null)timerImage.fillAmount=(TimeLimit-currentTime)/TimeLimit;
+        if(currentTime>=TimeLimit){FinishSingle();return;}
+        if(hintTimer>=5f)
+        {
+            hintTimer=0;boardManager.HintApples(hinted,false);
+            var rect=AppleGameSolver.GetHint(boardManager.GetAppleArray());
+            if(rect.isValid){hinted=boardManager.GetApplesByIndex(rect.r1,rect.r2,rect.c1,rect.c2);boardManager.HintApples(hinted,true);}
+        }
+    }
+    private void FitMultiplayerCamera()
+    {
+        var cam=Camera.main;if(cam==null)return;
+        float width=Mathf.Max(1,Screen.width-255);
+        cam.rect=new Rect(0,0,width/Screen.width,1);
+        if(cam.orthographic)
+            cam.orthographicSize=Mathf.Max(5f,(GameConstants.COLUMN*BoardManager.spacer+1f)/(2f*(width/Screen.height)));
+    }
+    private void OnDragging(Vector2 start,Vector2 current)
+    {
+        if(!active||ended||(multi&&network.SelectionPending))return;
+        boardManager.HighlightApples(selected,false);selected=boardManager.GetApplesInDraggedArea(start,current);
+        boardManager.HighlightApples(selected,true);
+    }
+    private void OnDragEnd(Vector2 start,Vector2 end)
+    {
+        if(!active||ended||(multi&&network.SelectionPending))return;
+        // Recompute from the release position; do not reuse the previous frame's selection.
+        boardManager.HighlightApples(selected,false);selected=boardManager.GetApplesInDraggedArea(start,end);
+        if(selected.Count==0)return;
+        if(multi)
+        {
+            boardManager.GetSelectionArea(start,end,out int r0,out int c0,out int r1,out int c1);
+            if(network.Select(r0,c0,r1,c1)){boardManager.HighlightApples(selected,true);dragSelector.enabled=false;}
+            return;
+        }
+        int sum=0;foreach(int i in selected)sum+=boardManager.GetAppleArray()[i];
+        if(sum!=10){selected.Clear();return;}
+        int removed=selected.Count;boardManager.RemoveSelectedApples(selected);SetScore(score+removed);
+        selected.Clear();ClearHint();
+        if(!AppleGameSolver.HasAvailableMoves(boardManager.GetAppleArray()))FinishSingle();
+    }
+    private void ApplyServerSelection(SelectionResult result)
+    {
+        if(!multi||!initialized)return;
+        boardManager.HighlightApples(selected,false);selected?.Clear();
+        // Apply the server's board snapshot, never the current mouse selection.
+        boardManager.ApplySnapshot(result.Board);SetScore((int)result.Score);
+        if(result.Finished){active=false;dragSelector.enabled=false;}
+    }
+    private void ClearHint(){hintTimer=0;boardManager.HintApples(hinted,false);hinted?.Clear();}
+    private void SetScore(int value){score=value;if(scoreText!=null)scoreText.text=score.ToString();}
+    private void FinishSingle()
+    {
+        if(ended)return;ended=true;active=false;dragSelector.enabled=false;
+        boardManager.HighlightApples(selected,false);ClearHint();AudioManager.Instance?.StopBGM();
+        UIManager.Instance?.GameEnd(score,TimeLimit-currentTime);
+        if(score>PlayerPrefs.GetInt(GameConstants.BEST_SCORE_KEY,0)){PlayerPrefs.SetInt(GameConstants.BEST_SCORE_KEY,score);PlayerPrefs.Save();}
+    }
+    public int GetDifficultyLevel(){return boardManager!=null?boardManager.difficultyLevel:0;}
+    public void ReturnToTitle()
+    {
+        if(multi){network.LeaveRoom();return;}SceneManager.LoadScene(GameConstants.TITLE_SCENE);
+    }
+    public void RestartGame()
+    {
+        if(multi){if(network.CurrentRoom?.Host==network.OwnId)network.ReturnRoom();return;}
+        network.StartSingle();
+    }
+    private void OnDestroy()
+    {
+        if(network!=null)network.SelectionReceived-=ApplyServerSelection;
+        if(Instance==this)Instance=null;
     }
 }

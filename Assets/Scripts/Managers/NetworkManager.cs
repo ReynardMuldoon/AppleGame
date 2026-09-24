@@ -1,235 +1,151 @@
 using System;
-using System.Collections.Concurrent;
-using System.Collections.Generic;
-using System.Net.Sockets;
-using System.Threading;
+using System.IO;
+using System.Text;
 using System.Threading.Tasks;
+using AppleNet;
 using UnityEngine;
-
-// C++ 서버의 enum class와 완벽히 일치해야 하는 패킷 타입
-public enum PacketType : ushort
-{
-    REQ_GAME_START = 1,
-    RES_GAME_START = 2,
-    REQ_DRAG_APPLE = 3,
-    RES_DRAG_APPLE = 4
-}
+using UnityEngine.SceneManagement;
 
 public class NetworkManager : MonoBehaviour
 {
-    // 어느 씬에서든 접근할 수 있도록 싱글톤 패턴 적용
-    public static NetworkManager Instance { get; private set; }
-
-    private TcpClient tcpClient;
-    private NetworkStream stream;
-    private Thread receiveThread;
-
-    // 상태 기계(State Machine)를 위한 플래그 변수들
-    public bool IsConnected { get; private set; } = false;
-    public bool IsConnecting { get; private set; } = false;
-
-    // 백그라운드 수신 스레드와 메인 스레드 사이의 안전한 중재자 큐
-    private ConcurrentQueue<Action> mainThreadActions = new ConcurrentQueue<Action>();
-
-    // 외부(GameManager 등)에서 구독할 수 있는 이벤트 방송국
-    public event Action<byte[]> OnGameStartReceived;
-    public event Action<bool, int> OnDragResultReceived;
-
+    public static NetworkManager Instance {get;private set;}
+    public static NetworkManager Ensure()
+    {
+        if(Instance==null)new GameObject("NetworkManager").AddComponent<NetworkManager>();
+        return Instance;
+    }
+    public bool Multiplayer {get;private set;}
+    public bool IsConnected {get{return transport!=null&&!transport.Closed;}}
+    public bool IsConnecting {get;private set;}
+    public bool Handshaken {get{return IsConnected&&OwnId!=0;}}
+    public uint OwnId {get;private set;}
+    public RoomInfo CurrentRoom {get;private set;}
+    public GameData Prepared {get;private set;}
+    public RoomPhase ClockPhase {get;private set;}
+    public string LastError {get;private set;}="";
+    public bool CommandPending {get;private set;}
+    public bool SelectionPending {get;private set;}
+    public event Action<SelectionResult> SelectionReceived;
+    private TcpTransport transport;
+    private int attempt; private uint requestId,revision,pendingRequest;
+    private float commandTime,selectionTime,clockReceived;
+    private uint clockRemaining;
+    public float RemainingSeconds {get{return Mathf.Max(0,clockRemaining/1000f-(Time.realtimeSinceStartup-clockReceived));}}
     private void Awake()
     {
-        if (Instance == null)
-        {
-            Instance = this;
-            DontDestroyOnLoad(gameObject); // 씬이 변경되어도 파괴되지 않음
-        }
-        else
-        {
-            Destroy(gameObject);
-        }
+        if(Instance!=null&&Instance!=this){Destroy(gameObject);return;}
+        Instance=this;DontDestroyOnLoad(gameObject);
+        Application.runInBackground = true;
+        if(GetComponent<MultiplayerHud>()==null)gameObject.AddComponent<MultiplayerHud>();
     }
-
+    public void StartSingle()
+    {
+        Disconnect();Multiplayer=false;LastError="";SceneManager.LoadScene(GameConstants.GAME_SCENE);
+    }
+    public async Task<bool> ConnectAsync(string host,int port,string nickname)
+    {
+        if(IsConnecting||IsConnected)return false;
+        nickname=nickname.Trim();
+        if(nickname.Length==0||Encoding.UTF8.GetByteCount(nickname)>48){LastError="Nickname must be 1-48 UTF-8 bytes.";return false;}
+        IsConnecting=true;LastError="";int token=++attempt;
+        try {
+            var connected=await TcpTransport.Connect(host,port);
+            if(token!=attempt||this==null){connected.Dispose();return false;}
+            transport=connected;Multiplayer=true;IsConnecting=false;
+            var w=new PacketWriter();w.U16(1);w.Text(nickname);Send(Message.Hello,w);
+            return true;
+        }catch(Exception e){if(token==attempt){IsConnecting=false;LastError=e.Message;}return false;}
+    }
+    public void CreateRoom(){Send(Message.Create);}
+    public void JoinRoom(string code){var w=new PacketWriter();w.Text(code.Trim().ToUpperInvariant());Send(Message.Join,w);}
+    public void SetReady(bool ready){var w=new PacketWriter();w.U8((byte)(ready?1:0));Send(Message.Ready,w);}
+    public void StartRoom(bool force){var w=new PacketWriter();w.U8((byte)(force?1:0));Send(Message.Start,w);}
+    public void ReturnRoom(){Send(Message.Return);}
+    public void LeaveRoom(){Send(Message.Leave);}
+    public void Loaded()
+    {
+        if(Prepared==null)return;
+        var w=new PacketWriter();w.U32(Prepared.Id);Send(Message.Loaded,w);
+    }
+    public bool Select(int r0,int c0,int r1,int c1)
+    {
+        if(SelectionPending||Prepared==null||CurrentRoom==null||CurrentRoom.Phase!=RoomPhase.Playing)return false;
+        if(requestId==uint.MaxValue){Fail("Request ID exhausted");return false;}
+        var w=new PacketWriter();w.U32(Prepared.Id);w.U32(++requestId);w.U32(revision);
+        w.U16((ushort)r0);w.U16((ushort)c0);w.U16((ushort)r1);w.U16((ushort)c1);
+        if(!Send(Message.Select,w,false))return false;
+        pendingRequest=requestId;SelectionPending=true;selectionTime=Time.realtimeSinceStartup;return true;
+    }
+    private bool Send(Message type,PacketWriter w=null,bool command=true)
+    {
+        if(!IsConnected){LastError="Not connected";return false;}
+        if(command&&CommandPending)return false;
+        if(!transport.Send(type,w==null?Array.Empty<byte>():w.ToArray())){Fail("Send queue full or disconnected");return false;}
+        if(command){LastError="";CommandPending=true;commandTime=Time.realtimeSinceStartup;}
+        return true;
+    }
     private void Update()
     {
-        // 유니티 메인 스레드에서만 안전하게 UI나 이벤트를 터뜨리기 위해 큐를 소비합니다.
-        while (mainThreadActions.TryDequeue(out Action action))
-        {
-            action?.Invoke();
-        }
+        if(transport==null)return;
+        try {
+            for(int i=0;i<64&&transport!=null&&transport.TryReceive(out var f);i++)Dispatch(f);
+        }catch(Exception e){Fail("Invalid server packet: "+e.Message);return;}
+        if(transport!=null&&transport.Closed){Fail(transport.Error??"Disconnected");return;}
+        if((CommandPending&&Time.realtimeSinceStartup-commandTime>20)||
+           (SelectionPending&&Time.realtimeSinceStartup-selectionTime>5))Fail("Server response timed out");
     }
-
-    /// <summary>
-    /// 서버에 비동기로 연결을 시도합니다. UI 프레임 드랍이 발생하지 않습니다.
-    /// TitleScene에서 버튼을 눌렀을 때 호출하면 됩니다.
-    /// </summary>
-    public async Task<bool> ConnectAsync(string ip, int port)
+    private void Dispatch(TcpTransport.Frame frame)
     {
-        if (IsConnected || IsConnecting) return false;
-
-        IsConnecting = true;
-        Debug.Log($"[네트워크] 서버({ip}:{port}) 연결 시도 중...");
-
-        try
+        var r=new PacketReader(frame.Body);
+        switch(frame.Type)
         {
-            tcpClient = new TcpClient();
-            // 비동기 연결 시도 (유니티 화면이 멈추지 않음)
-            await tcpClient.ConnectAsync(ip, port);
-
-            stream = tcpClient.GetStream();
-            IsConnected = true;
-            IsConnecting = false;
-
-            Debug.Log("[네트워크] 서버 접속 성공!");
-
-            // 연결 성공 시, 데이터를 백그라운드에서 퍼담을 일꾼 스레드 가동
-            receiveThread = new Thread(ReceiveLoop);
-            receiveThread.IsBackground = true;
-            receiveThread.Start();
-
-            return true;
-        }
-        catch (Exception e)
-        {
-            Debug.LogError($"[네트워크] 접속 실패: {e.Message}");
-            IsConnecting = false;
-            return false;
+        case Message.Welcome:
+            OwnId=r.U32();r.End();if(OwnId==0)throw new InvalidDataException();CommandPending=false;break;
+        case Message.Room:
+            var room=new RoomInfo();room.Code=r.Text(4);room.Host=r.U32();room.Phase=(RoomPhase)r.U8();room.Game=r.U32();
+            int count=r.U8();if(count<1||count>8||(byte)room.Phase>4)throw new InvalidDataException("Room");
+            for(int i=0;i<count;i++)room.Members.Add(new MemberInfo{Id=r.U32(),Name=r.Text(48),Ready=r.Bool(),Finished=r.Bool(),Connected=r.Bool(),Score=r.U32(),Rank=r.U16()});
+            r.End();if(room.Find(OwnId)==null)throw new InvalidDataException("Missing local member");
+            CurrentRoom=room;CommandPending=false;
+            if(room.Phase==RoomPhase.Waiting){Prepared=null;SelectionPending=false;if(SceneManager.GetActiveScene().name==GameConstants.GAME_SCENE)SceneManager.LoadScene(GameConstants.TITLE_SCENE);}
+            break;
+        case Message.Prepare:
+            var game=new GameData{Id=r.U32(),Rows=r.U16(),Columns=r.U16(),Duration=r.U32()};
+            if(game.Rows!=GameConstants.ROW||game.Columns!=GameConstants.COLUMN||game.Duration!=120000)throw new InvalidDataException("Unsupported game configuration");
+            game.Board=r.Bytes(game.Rows*game.Columns);r.End();
+            foreach(byte v in game.Board)if(v<1||v>9)throw new InvalidDataException("Board value");
+            if(CurrentRoom==null||CurrentRoom.Game!=game.Id||CurrentRoom.Phase!=RoomPhase.Loading)throw new InvalidDataException("Unexpected prepare");
+            Prepared=game;requestId=revision=0;SelectionPending=false;ClockPhase=RoomPhase.Loading;clockRemaining=0;
+            SceneManager.LoadScene(GameConstants.GAME_SCENE);break;
+        case Message.Clock:
+            uint gameId=r.U32();var phase=(RoomPhase)r.U8();uint remaining=r.U32();r.End();
+            if(Prepared!=null&&gameId==Prepared.Id){ClockPhase=phase;clockRemaining=remaining;clockReceived=Time.realtimeSinceStartup;CommandPending=false;}
+            break;
+        case Message.Selection:
+            var result=new SelectionResult{Game=r.U32(),Request=r.U32(),Status=r.U8(),Revision=r.U32(),Score=r.U32(),Finished=r.Bool()};
+            result.Board=r.Bytes(GameConstants.ROW*GameConstants.COLUMN);r.End();
+            if(result.Status>3||result.Score>170)throw new InvalidDataException("Selection");
+            foreach(byte v in result.Board)if(v>9)throw new InvalidDataException("Board");
+            if(Prepared==null||result.Game!=Prepared.Id||!SelectionPending||result.Request!=pendingRequest)break;
+            revision=result.Revision;SelectionPending=false;SelectionReceived?.Invoke(result);break;
+        case Message.Left:
+            r.End();CurrentRoom=null;Prepared=null;SelectionPending=false;CommandPending=false;
+            if(SceneManager.GetActiveScene().name!=GameConstants.TITLE_SCENE)SceneManager.LoadScene(GameConstants.TITLE_SCENE);break;
+        case Message.Error:
+            LastError=r.Text(256);r.End();CommandPending=false;SelectionPending=false;break;
+        default:throw new InvalidDataException("Unknown message");
         }
     }
-
-
-    // [C -> S] 게임 시작(보드 생성) 요청
-    public void SendGameStartRequest()
+    private void Fail(string message)
     {
-        if (!IsConnected || stream == null) return;
-
-        ushort size = 4; // Header: Size(2) + Type(2)
-        ushort type = (ushort)PacketType.REQ_GAME_START;
-
-        byte[] packet = new byte[size];
-        Buffer.BlockCopy(BitConverter.GetBytes(size), 0, packet, 0, 2);
-        Buffer.BlockCopy(BitConverter.GetBytes(type), 0, packet, 2, 2);
-
-        stream.Write(packet, 0, packet.Length);
-        Debug.Log("[네트워크] REQ_GAME_START 전송 완료");
+        Disconnect();LastError=message;
+        if(SceneManager.GetActiveScene().name!=GameConstants.TITLE_SCENE)SceneManager.LoadScene(GameConstants.TITLE_SCENE);
     }
-
-    // [C -> S] 드래그한 사과 정보 서버에 검증 요청
-    public void SendDragAppleRequest(List<int> appleIndices)
-    {
-        if (!IsConnected || stream == null || appleIndices == null || appleIndices.Count == 0) return;
-
-        // Header(4) + indexCount(4) + (인덱스 배열 크기 * 4)
-        ushort size = (ushort)(4 + 4 + (appleIndices.Count * 4));
-        ushort type = (ushort)PacketType.REQ_DRAG_APPLE;
-
-        byte[] packet = new byte[size];
-
-        // 1. 헤더 복사
-        Buffer.BlockCopy(BitConverter.GetBytes(size), 0, packet, 0, 2);
-        Buffer.BlockCopy(BitConverter.GetBytes(type), 0, packet, 2, 2);
-
-        // 2. 사과 개수 (indexCount) 복사
-        Buffer.BlockCopy(BitConverter.GetBytes(appleIndices.Count), 0, packet, 4, 4);
-
-        // 3. 인덱스 배열 데이터 복사
-        int offset = 8;
-        for (int i = 0; i < appleIndices.Count; i++)
-        {
-            Buffer.BlockCopy(BitConverter.GetBytes(appleIndices[i]), 0, packet, offset, 4);
-            offset += 4;
-        }
-
-        stream.Write(packet, 0, packet.Length);
-    }
-
-
-    // 🚨 절대 이 함수 안에서 유니티 GameObject나 UI를 직접 건드리면 안 됩니다. (엔진 에러 발생)
-    private void ReceiveLoop()
-    {
-        byte[] headerBuffer = new byte[4];
-
-        while (IsConnected)
-        {
-            try
-            {
-                // 1. 헤더 (4바이트) 수신 - TCP 단편화 방어
-                int headerRead = 0;
-                while (headerRead < 4)
-                {
-                    int read = stream.Read(headerBuffer, headerRead, 4 - headerRead);
-                    if (read == 0) throw new Exception("서버에서 연결을 종료했습니다.");
-                    headerRead += read;
-                }
-
-                ushort size = BitConverter.ToUInt16(headerBuffer, 0);
-                ushort type = BitConverter.ToUInt16(headerBuffer, 2);
-
-                // 2. 페이로드 (본문) 수신
-                int payloadSize = size - 4;
-                byte[] payloadBuffer = new byte[payloadSize];
-
-                int payloadRead = 0;
-                while (payloadRead < payloadSize)
-                {
-                    int read = stream.Read(payloadBuffer, payloadRead, payloadSize - payloadRead);
-                    if (read == 0) throw new Exception("서버에서 연결을 종료했습니다.");
-                    payloadRead += read;
-                }
-
-                // 3. 패킷 타입에 따른 로직 분배 (Dispatch)
-                if (type == (ushort)PacketType.RES_GAME_START)
-                {
-                    // 170바이트 사과 배열 복원
-                    byte[] appleGrid = new byte[170];
-                    Buffer.BlockCopy(payloadBuffer, 0, appleGrid, 0, 170);
-
-                    // 메인 스레드 큐에 이벤트 발생 작업 예약
-                    mainThreadActions.Enqueue(() =>
-                    {
-                        Debug.Log("[네트워크] 170개 사과 데이터 수신 완료.");
-                        OnGameStartReceived?.Invoke(appleGrid);
-                    });
-                }
-                else if (type == (ushort)PacketType.RES_DRAG_APPLE)
-                {
-                    // C++: #pragma pack(1) 기준 bool(1바이트) + int(4바이트) = 총 5바이트
-                    bool isSuccess = BitConverter.ToBoolean(payloadBuffer, 0);
-                    int currentScore = BitConverter.ToInt32(payloadBuffer, 1);
-
-                    mainThreadActions.Enqueue(() =>
-                    {
-                        OnDragResultReceived?.Invoke(isSuccess, currentScore);
-                    });
-                }
-            }
-            catch (Exception e)
-            {
-                if (IsConnected) Debug.LogWarning($"[네트워크] 수신 에러 또는 접속 종료: {e.Message}");
-                Disconnect();
-                break;
-            }
-        }
-    }
-
     public void Disconnect()
     {
-        if (!IsConnected) return;
-
-        IsConnected = false;
-        IsConnecting = false;
-        stream?.Close();
-        tcpClient?.Close();
-
-        Debug.Log("[네트워크] 소켓 연결이 해제되었습니다.");
+        ++attempt;IsConnecting=false;CommandPending=SelectionPending=false;
+        var old=transport;transport=null;old?.Dispose();OwnId=0;CurrentRoom=null;Prepared=null;Multiplayer=false;
     }
-
-    private void OnDestroy()
-    {
-        Disconnect();
-
-        // 스레드가 정상 종료되도록 약간 대기
-        if (receiveThread != null && receiveThread.IsAlive)
-        {
-            receiveThread.Join(500);
-        }
-    }
+    private void OnApplicationQuit(){Disconnect();}
+    private void OnDestroy(){if(Instance==this){Disconnect();Instance=null;}}
 }

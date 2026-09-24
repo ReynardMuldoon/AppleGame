@@ -1,7 +1,5 @@
 using System.Collections.Generic;
-using Unity.VisualScripting;
 using UnityEngine;
-using UnityEngine.InputSystem;
 
 public class BoardManager : MonoBehaviour
 {
@@ -17,7 +15,7 @@ public class BoardManager : MonoBehaviour
 
     private int estimatedMaxScore; // 현재 보드에서 제거 가능한 사과의 최대 개수 (근삿값)
 
-    void Start()
+    void Awake()
     {
         appleArray = new int[GameConstants.ROW * GameConstants.COLUMN];
         appleGrid = new Apple[GameConstants.ROW * GameConstants.COLUMN];
@@ -30,6 +28,16 @@ public class BoardManager : MonoBehaviour
 
     public void GenerateBoard(byte[] data)
     {
+        int count = GameConstants.ROW * GameConstants.COLUMN;
+        if (data == null || data.Length != count) throw new System.ArgumentException("Invalid board size");
+        if (appleGrid == null) appleGrid = new Apple[count];
+        if (appleArray == null) appleArray = new int[count];
+        for (int k = 0; k < count; k++)
+        {
+            if (data[k] < 1 || data[k] > 9) throw new System.ArgumentException("Invalid apple value");
+            if (appleGrid[k] != null) Destroy(appleGrid[k].gameObject);
+            appleGrid[k] = null;
+        }
         // appleArray 배열에 서버에서 받은 데이터를 기반으로 사과 값 설정
         for (int i = 0; i < GameConstants.ROW * GameConstants.COLUMN; i++)
         {
@@ -55,6 +63,8 @@ public class BoardManager : MonoBehaviour
                 apple.transform.localPosition = position;
 
                 apple.SetValue(appleArray[i * GameConstants.COLUMN + j], i, j);
+                apple.SetSelected(false);
+                apple.SetHinted(false);
                 appleGrid[i * GameConstants.COLUMN + j] = apple;
             }
         }
@@ -132,7 +142,8 @@ public class BoardManager : MonoBehaviour
     {
         foreach (int index in selectedAppleIndices)
         {
-            AudioManager.Instance.PlaySFX(SFXType.ApplePop);
+            if (index < 0 || index >= appleGrid.Length || appleGrid[index] == null) continue;
+            AudioManager.Instance?.PlaySFX(SFXType.ApplePop);
             Destroy(appleGrid[index].gameObject);
             appleGrid[index] = null;
             appleArray[index] = 0; // 제거된 사과의 값을 0으로 설정
@@ -175,5 +186,26 @@ public class BoardManager : MonoBehaviour
         c = Mathf.Clamp(c, 0, GameConstants.COLUMN);
 
         return (r, c);
+    }
+
+    // Half-open board coordinates: [r0,r1) x [c0,c1), matching current drag semantics.
+    public void GetSelectionArea(Vector2 start, Vector2 end, out int r0, out int c0, out int r1, out int c1)
+    {
+        Vector2 a = transform.InverseTransformPoint(new Vector2(Mathf.Min(start.x,end.x),Mathf.Max(start.y,end.y)));
+        Vector2 b = transform.InverseTransformPoint(new Vector2(Mathf.Max(start.x,end.x),Mathf.Min(start.y,end.y)));
+        (r0,c0) = GetAppleGridIndex(a);
+        (r1,c1) = GetAppleGridIndex(b);
+    }
+
+    public void ApplySnapshot(byte[] state)
+    {
+        if (state == null || state.Length != appleArray.Length) throw new System.ArgumentException("Board size");
+        var removed = new List<int>();
+        for (int i=0; i<state.Length; i++)
+        {
+            if (state[i] == 0 && appleArray[i] != 0) removed.Add(i);
+            else if (state[i] != appleArray[i]) throw new System.InvalidOperationException("Unexpected board replacement");
+        }
+        RemoveSelectedApples(removed);
     }
 }
