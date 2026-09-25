@@ -1,10 +1,10 @@
 using UnityEngine;
-using UnityEngine.UI; 
+using UnityEngine.UI;
 
 public class VolumeUI : MonoBehaviour
 {
     [SerializeField] private Slider bgmVolumeSlider;
-    [SerializeField] private Slider sfxVolumeSlider; 
+    [SerializeField] private Slider sfxVolumeSlider;
 
     // Start is called once before the first execution of Update after the MonoBehaviour is created
     void Start()
@@ -17,7 +17,7 @@ public class VolumeUI : MonoBehaviour
 
         if (sfxVolumeSlider != null)
         {
-            sfxVolumeSlider.SetValueWithoutNotify(PlayerPrefs.GetFloat(GameConstants.SFX_VOLUME_KEY, 1.0f));    
+            sfxVolumeSlider.SetValueWithoutNotify(PlayerPrefs.GetFloat(GameConstants.SFX_VOLUME_KEY, 1.0f));
             sfxVolumeSlider.onValueChanged.AddListener(OnSFXVolumeChanged);
         }
     }
@@ -25,11 +25,11 @@ public class VolumeUI : MonoBehaviour
     private void OnBGMVolumeChanged(float value)
     {
         PlayerPrefs.SetFloat(GameConstants.BGM_VOLUME_KEY, value);
-        PlayerPrefs.Save(); 
+        PlayerPrefs.Save();
 
         if (AudioManager.Instance != null)
         {
-            AudioManager.Instance.SetBGMVolume(value); 
+            AudioManager.Instance.SetBGMVolume(value);
         }
     }
 

@@ -16,7 +16,7 @@ public class Apple : MonoBehaviour
     private bool isHinted = false; // 힌트로 선택되었는지 
 
     private int rowIndex;
-    private int columnIndex; 
+    private int columnIndex;
 
     public int GetValue()
     {
@@ -45,7 +45,7 @@ public class Apple : MonoBehaviour
     public void SetSelected(bool selected)
     {
         isSelected = selected;
-        backGround.color = selected ? new Color(1, 1, 0, 1) : new Color(1, 1, 0, 0); 
+        backGround.color = selected ? new Color(1, 1, 0, 1) : new Color(1, 1, 0, 0);
     }
 
     public void SetHinted(bool hinted)

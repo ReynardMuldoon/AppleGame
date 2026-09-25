@@ -2,13 +2,16 @@ using System;
 using System.Collections;
 using TMPro;
 using UnityEngine;
-using UnityEngine.UI; 
+using UnityEngine.UI;
 
 public class UIManager : MonoBehaviour
 {
-    public static UIManager Instance { get; private set; }
+    public static UIManager Instance
+    {
+        get; private set;
+    }
 
-    [SerializeField] private CountdownUI countdownUI; 
+    [SerializeField] private CountdownUI countdownUI;
     [SerializeField] private VolumeUI volumeUI;
     [SerializeField] private GameOverUI gameOverUI;
 
@@ -16,11 +19,11 @@ public class UIManager : MonoBehaviour
     {
         if (Instance == null)
         {
-            Instance = this; 
+            Instance = this;
         }
         else
         {
-            Destroy(gameObject); 
+            Destroy(gameObject);
         }
     }
 
@@ -31,6 +34,6 @@ public class UIManager : MonoBehaviour
 
     public void GameEnd(int score, float leftTime)
     {
-        gameOverUI.GameOver(score, leftTime); 
+        gameOverUI.GameOver(score, leftTime);
     }
 }

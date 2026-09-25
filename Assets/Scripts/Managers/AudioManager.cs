@@ -9,16 +9,19 @@ public enum SFXType
 }
 
 // 인스펙터에서 enum과 오디오 클립을 짝지어줄 구조체 선언 
-[Serializable] 
+[Serializable]
 public struct SoundMapping
 {
     public SFXType type;
-    public AudioClip clip; 
+    public AudioClip clip;
 }
 public class AudioManager : MonoBehaviour
 {
     // 싱글톤 패턴: 전역에서 단 하나만 존재하고 어디서든 접근 가능 
-    public static AudioManager Instance { get; private set; }
+    public static AudioManager Instance
+    {
+        get; private set;
+    }
 
     // 오디오 소스: 용도에 따라 분리 
     [Header("AudioSources")]
@@ -34,7 +37,7 @@ public class AudioManager : MonoBehaviour
     [SerializeField] private List<SoundMapping> sfxMappings;
 
     // 실제 게임 중 빠른 검색을 위해 내부적으로 사용할 딕셔너리 
-    private Dictionary<SFXType, AudioClip> sfxDictionary; 
+    private Dictionary<SFXType, AudioClip> sfxDictionary;
 
     void Awake()
     {
@@ -45,7 +48,7 @@ public class AudioManager : MonoBehaviour
 
             LoadVolume(); // 저장된 볼륨 불러오기 
         }
-         
+
         else
         {
             Destroy(gameObject);
@@ -66,16 +69,17 @@ public class AudioManager : MonoBehaviour
         if (mainBGM != null)
         {
             bgmSource.clip = mainBGM;
-            bgmSource.loop = true; 
-            bgmSource.Play(); 
+            bgmSource.loop = true;
+            bgmSource.Play();
         }
     }
 
     // BGM 정지 
     public void StopBGM()
     {
-        if (bgmSource == null) return; 
-        bgmSource.Stop(); 
+        if (bgmSource == null)
+            return;
+        bgmSource.Stop();
     }
 
     // BGM 일시 정지 
@@ -83,7 +87,7 @@ public class AudioManager : MonoBehaviour
     {
         if (bgmSource.isPlaying)
         {
-            bgmSource.Pause(); 
+            bgmSource.Pause();
         }
     }
 
@@ -97,19 +101,19 @@ public class AudioManager : MonoBehaviour
     {
         if (sfxDictionary.TryGetValue(type, out AudioClip clip))
         {
-            sfxSource.PlayOneShot(clip); 
+            sfxSource.PlayOneShot(clip);
         }
         else
         {
-            Debug.LogWarning($"[AudioManager] {type}에 연결된 오디오 클립이 없습니다."); 
+            Debug.LogWarning($"[AudioManager] {type}에 연결된 오디오 클립이 없습니다.");
         }
     }
 
     public void SetBGMVolume(float volume)
     {
-        if (bgmSource != null) 
-        { 
-            bgmSource.volume = volume; 
+        if (bgmSource != null)
+        {
+            bgmSource.volume = volume;
         }
     }
 
@@ -141,7 +145,7 @@ public class AudioManager : MonoBehaviour
         float savedSFXVolume = PlayerPrefs.GetFloat(GameConstants.SFX_VOLUME_KEY, 1.0f);
         if (bgmSource != null)
         {
-            bgmSource.volume = savedBGMVolume; 
+            bgmSource.volume = savedBGMVolume;
         }
 
         if (sfxSource != null)

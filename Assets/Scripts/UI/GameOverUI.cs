@@ -7,10 +7,10 @@ public class GameOverUI : MonoBehaviour
     [SerializeField] private GameObject gameOverPanel;
     [SerializeField] private TextMeshProUGUI scoreText;
     [SerializeField] private TextMeshProUGUI leftTimeText;
-    [SerializeField] private TextMeshProUGUI difficultyLevelText; 
+    [SerializeField] private TextMeshProUGUI difficultyLevelText;
 
     [SerializeField] private Button returnToTitleButton;
-    [SerializeField] private Button restartButton; 
+    [SerializeField] private Button restartButton;
 
     void Start()
     {
@@ -23,7 +23,7 @@ public class GameOverUI : MonoBehaviour
         gameOverPanel.SetActive(true);
         scoreText.text = $"점수: {score}";
         leftTimeText.text = $"남은 시간: {leftTime}";
-        ShowDifficultyLevel(); 
+        ShowDifficultyLevel();
     }
 
     private void ShowDifficultyLevel()

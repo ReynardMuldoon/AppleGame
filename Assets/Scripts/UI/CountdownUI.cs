@@ -20,6 +20,6 @@ public class CountdownUI : MonoBehaviour
 
         countdownPanel.SetActive(false);
 
-        onComplete(); 
+        onComplete();
     }
 }
